@@ -1526,7 +1526,8 @@ CREATE TABLE `characters` (
   `position_z` float NOT NULL DEFAULT '0',
   `map` smallint(5) unsigned NOT NULL DEFAULT '0' COMMENT 'Map Identifier',
   `instance_id` int(10) unsigned NOT NULL DEFAULT '0',
-  `instance_mode_mask` tinyint(3) unsigned NOT NULL DEFAULT '0',
+  `dungeonDifficulty` tinyint(3) unsigned NOT NULL DEFAULT '1',
+  `raidDifficulty` tinyint(3) unsigned NOT NULL DEFAULT '14',
   `orientation` float NOT NULL DEFAULT '0',
   `taximask` text NOT NULL,
   `online` tinyint(3) unsigned NOT NULL DEFAULT '0',
@@ -1820,95 +1821,6 @@ CREATE TABLE `gm_tickets` (
 LOCK TABLES `gm_tickets` WRITE;
 /*!40000 ALTER TABLE `gm_tickets` DISABLE KEYS */;
 /*!40000 ALTER TABLE `gm_tickets` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `group_instance`
---
-
-DROP TABLE IF EXISTS `group_instance`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `group_instance` (
-  `guid` int(10) unsigned NOT NULL DEFAULT '0',
-  `instance` int(10) unsigned NOT NULL DEFAULT '0',
-  `permanent` tinyint(3) unsigned NOT NULL DEFAULT '0',
-  PRIMARY KEY (`guid`,`instance`),
-  KEY `instance` (`instance`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `group_instance`
---
-
-LOCK TABLES `group_instance` WRITE;
-/*!40000 ALTER TABLE `group_instance` DISABLE KEYS */;
-/*!40000 ALTER TABLE `group_instance` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `group_member`
---
-
-DROP TABLE IF EXISTS `group_member`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `group_member` (
-  `guid` int(10) unsigned NOT NULL,
-  `memberGuid` int(10) unsigned NOT NULL,
-  `memberFlags` tinyint(3) unsigned NOT NULL DEFAULT '0',
-  `subgroup` tinyint(3) unsigned NOT NULL DEFAULT '0',
-  `roles` tinyint(3) unsigned NOT NULL DEFAULT '0',
-  PRIMARY KEY (`memberGuid`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Groups';
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `group_member`
---
-
-LOCK TABLES `group_member` WRITE;
-/*!40000 ALTER TABLE `group_member` DISABLE KEYS */;
-/*!40000 ALTER TABLE `group_member` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `groups`
---
-
-DROP TABLE IF EXISTS `groups`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `groups` (
-  `guid` int(10) unsigned NOT NULL,
-  `leaderGuid` int(10) unsigned NOT NULL,
-  `lootMethod` tinyint(3) unsigned NOT NULL,
-  `looterGuid` int(10) unsigned NOT NULL,
-  `lootThreshold` tinyint(3) unsigned NOT NULL,
-  `icon1` int(10) unsigned NOT NULL,
-  `icon2` int(10) unsigned NOT NULL,
-  `icon3` int(10) unsigned NOT NULL,
-  `icon4` int(10) unsigned NOT NULL,
-  `icon5` int(10) unsigned NOT NULL,
-  `icon6` int(10) unsigned NOT NULL,
-  `icon7` int(10) unsigned NOT NULL,
-  `icon8` int(10) unsigned NOT NULL,
-  `groupType` tinyint(3) unsigned NOT NULL,
-  `difficulty` tinyint(3) unsigned NOT NULL DEFAULT '0',
-  `raiddifficulty` tinyint(3) unsigned NOT NULL DEFAULT '0',
-  PRIMARY KEY (`guid`),
-  KEY `leaderGuid` (`leaderGuid`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Groups';
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `groups`
---
-
-LOCK TABLES `groups` WRITE;
-/*!40000 ALTER TABLE `groups` DISABLE KEYS */;
-/*!40000 ALTER TABLE `groups` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -2625,6 +2537,95 @@ CREATE TABLE `mail_items` (
 LOCK TABLES `mail_items` WRITE;
 /*!40000 ALTER TABLE `mail_items` DISABLE KEYS */;
 /*!40000 ALTER TABLE `mail_items` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `party_instance`
+--
+
+DROP TABLE IF EXISTS `party_instance`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `party_instance` (
+  `guid` int(10) unsigned NOT NULL DEFAULT '0',
+  `instance` int(10) unsigned NOT NULL DEFAULT '0',
+  `permanent` tinyint(3) unsigned NOT NULL DEFAULT '0',
+  PRIMARY KEY (`guid`,`instance`),
+  KEY `instance` (`instance`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `party_instance`
+--
+
+LOCK TABLES `party_instance` WRITE;
+/*!40000 ALTER TABLE `party_instance` DISABLE KEYS */;
+/*!40000 ALTER TABLE `party_instance` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `party_member`
+--
+
+DROP TABLE IF EXISTS `party_member`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `party_member` (
+  `guid` int(10) unsigned NOT NULL,
+  `memberGuid` int(10) unsigned NOT NULL,
+  `memberFlags` tinyint(3) unsigned NOT NULL DEFAULT '0',
+  `subparty` tinyint(3) unsigned NOT NULL DEFAULT '0',
+  `roles` tinyint(3) unsigned NOT NULL DEFAULT '0',
+  PRIMARY KEY (`memberGuid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='partys';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `party_member`
+--
+
+LOCK TABLES `party_member` WRITE;
+/*!40000 ALTER TABLE `party_member` DISABLE KEYS */;
+/*!40000 ALTER TABLE `party_member` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `parties`
+--
+
+DROP TABLE IF EXISTS `parties`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `parties` (
+  `guid` int(10) unsigned NOT NULL,
+  `leaderGuid` int(10) unsigned NOT NULL,
+  `lootMethod` tinyint(3) unsigned NOT NULL,
+  `looterGuid` int(10) unsigned NOT NULL,
+  `lootThreshold` tinyint(3) unsigned NOT NULL,
+  `icon1` int(10) unsigned NOT NULL,
+  `icon2` int(10) unsigned NOT NULL,
+  `icon3` int(10) unsigned NOT NULL,
+  `icon4` int(10) unsigned NOT NULL,
+  `icon5` int(10) unsigned NOT NULL,
+  `icon6` int(10) unsigned NOT NULL,
+  `icon7` int(10) unsigned NOT NULL,
+  `icon8` int(10) unsigned NOT NULL,
+  `partyType` tinyint(3) unsigned NOT NULL,
+  `difficulty` tinyint(3) unsigned NOT NULL DEFAULT '1',
+  `raidDifficulty` tinyint(3) unsigned NOT NULL DEFAULT '14',
+  PRIMARY KEY (`guid`),
+  KEY `leaderGuid` (`leaderGuid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='parties';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `parties`
+--
+
+LOCK TABLES `parties` WRITE;
+/*!40000 ALTER TABLE `parties` DISABLE KEYS */;
+/*!40000 ALTER TABLE `parties` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --

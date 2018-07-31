@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -127,7 +127,7 @@ std::string _SpellScript::EffectNameCheck::ToString()
             return "SPELL_EFFECT_ANY";
         default:
             char num[10];
-            sprintf (num, "%u", effName);
+            snprintf (num, sizeof(num), "%u", effName);
             return num;
     }
 }
@@ -149,7 +149,7 @@ std::string _SpellScript::EffectAuraNameCheck::ToString()
             return "SPELL_AURA_ANY";
         default:
             char num[10];
-            sprintf (num, "%u", effAurName);
+            snprintf (num, sizeof(num), "%u", effAurName);
             return num;
     }
 }

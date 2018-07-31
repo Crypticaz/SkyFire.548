@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -212,7 +212,7 @@ m_bind(NULL)
     memset(m_bind, 0, sizeof(MYSQL_BIND)*m_paramCount);
 
     /// "If set to 1, causes mysql_stmt_store_result() to update the metadata MYSQL_FIELD->max_length value."
-    my_bool bool_tmp = 1;
+    bool bool_tmp = 1;
     mysql_stmt_attr_set(stmt, STMT_ATTR_UPDATE_MAX_LENGTH, &bool_tmp);
 }
 

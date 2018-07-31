@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -2794,62 +2794,6 @@ class spell_gen_remove_flight_auras : public SpellScriptLoader
         }
 };
 
-enum Replenishment
-{
-    SPELL_REPLENISHMENT             = 57669,
-    SPELL_INFINITE_REPLENISHMENT    = 61782
-};
-
-class spell_gen_replenishment : public SpellScriptLoader
-{
-    public:
-        spell_gen_replenishment() : SpellScriptLoader("spell_gen_replenishment") { }
-
-        class spell_gen_replenishment_AuraScript : public AuraScript
-        {
-            PrepareAuraScript(spell_gen_replenishment_AuraScript);
-
-            bool Validate(SpellInfo const* /*spellInfo*/) OVERRIDE
-            {
-                if (!sSpellMgr->GetSpellInfo(SPELL_REPLENISHMENT) ||
-                    !sSpellMgr->GetSpellInfo(SPELL_INFINITE_REPLENISHMENT))
-                    return false;
-                return true;
-            }
-
-            bool Load() OVERRIDE
-            {
-                return GetUnitOwner()->GetPower(POWER_MANA);
-            }
-
-            void CalculateAmount(AuraEffect const* /*aurEff*/, int32& amount, bool& /*canBeRecalculated*/)
-            {
-                switch (GetSpellInfo()->Id)
-                {
-                    case SPELL_REPLENISHMENT:
-                        amount = GetUnitOwner()->GetMaxPower(POWER_MANA) * 0.002f;
-                        break;
-                    case SPELL_INFINITE_REPLENISHMENT:
-                        amount = GetUnitOwner()->GetMaxPower(POWER_MANA) * 0.0025f;
-                        break;
-                    default:
-                        break;
-                }
-            }
-
-            void Register() OVERRIDE
-            {
-                DoEffectCalcAmount += AuraEffectCalcAmountFn(spell_gen_replenishment_AuraScript::CalculateAmount, EFFECT_0, SPELL_AURA_PERIODIC_ENERGIZE);
-            }
-        };
-
-        AuraScript* GetAuraScript() const OVERRIDE
-        {
-            return new spell_gen_replenishment_AuraScript();
-        }
-};
-
-
 enum RunningWildMountIds
 {
     RUNNING_WILD_MODEL_MALE     = 29422,
@@ -3001,53 +2945,6 @@ class spell_gen_darkflight : public SpellScriptLoader
         SpellScript* GetSpellScript() const OVERRIDE
         {
             return new spell_gen_darkflight_SpellScript();
-        }
-};
-enum SeaforiumSpells
-{
-    SPELL_PLANT_CHARGES_CREDIT_ACHIEVEMENT  = 60937
-};
-
-class spell_gen_seaforium_blast : public SpellScriptLoader
-{
-    public:
-        spell_gen_seaforium_blast() : SpellScriptLoader("spell_gen_seaforium_blast") { }
-
-        class spell_gen_seaforium_blast_SpellScript : public SpellScript
-        {
-            PrepareSpellScript(spell_gen_seaforium_blast_SpellScript);
-
-            bool Validate(SpellInfo const* /*spellInfo*/) OVERRIDE
-            {
-                if (!sSpellMgr->GetSpellInfo(SPELL_PLANT_CHARGES_CREDIT_ACHIEVEMENT))
-                    return false;
-                return true;
-            }
-
-            bool Load() OVERRIDE
-            {
-                // OriginalCaster is always available in Spell::prepare
-                return GetOriginalCaster()->GetTypeId() == TYPEID_PLAYER;
-            }
-
-            void AchievementCredit(SpellEffIndex /*effIndex*/)
-            {
-                // but in effect handling OriginalCaster can become NULL
-                if (Unit* originalCaster = GetOriginalCaster())
-                    if (GameObject* go = GetHitGObj())
-                        if (go->GetGOInfo()->type == GAMEOBJECT_TYPE_DESTRUCTIBLE_BUILDING)
-                            originalCaster->CastSpell(originalCaster, SPELL_PLANT_CHARGES_CREDIT_ACHIEVEMENT, true);
-            }
-
-            void Register() OVERRIDE
-            {
-                OnEffectHitTarget += SpellEffectFn(spell_gen_seaforium_blast_SpellScript::AchievementCredit, EFFECT_1, SPELL_EFFECT_GAMEOBJECT_DAMAGE);
-            }
-        };
-
-        SpellScript* GetSpellScript() const OVERRIDE
-        {
-            return new spell_gen_seaforium_blast_SpellScript();
         }
 };
 
@@ -3640,6 +3537,50 @@ class spell_gen_whisper_gulch_yogg_saron_whisper : public SpellScriptLoader
         }
 };
 
+class spell_gen_override_display_power : public SpellScriptLoader
+{
+    public:
+        spell_gen_override_display_power() : SpellScriptLoader("spell_gen_override_display_power") { }
+
+        class spell_gen_override_display_power_AuraScript : public AuraScript
+        {
+            PrepareAuraScript(spell_gen_override_display_power_AuraScript);
+
+            void OnApply(AuraEffect const* aurEff, AuraEffectHandleModes /*mode*/)
+            {
+                if (Unit* target = GetTarget())
+                    target->SetUInt32Value(UNIT_FIELD_OVERRIDE_DISPLAY_POWER_ID, aurEff->GetMiscValue());
+            }
+
+            void OnRemove(AuraEffect const* aurEff, AuraEffectHandleModes /*mode*/)
+            {
+                if (Unit* target = GetTarget())
+                    target->SetUInt32Value(UNIT_FIELD_OVERRIDE_DISPLAY_POWER_ID, 0);
+            }
+
+            void Register() override
+            {
+			    if (m_scriptSpellId == 123933 || m_scriptSpellId == 145627 || m_scriptSpellId == 145628)
+                    OnEffectApply += AuraEffectApplyFn(spell_gen_override_display_power_AuraScript::OnApply, EFFECT_1, SPELL_AURA_402, AURA_EFFECT_HANDLE_REAL);
+				else if (m_scriptSpellId == 145044)
+					OnEffectApply += AuraEffectApplyFn(spell_gen_override_display_power_AuraScript::OnApply, EFFECT_4, SPELL_AURA_402, AURA_EFFECT_HANDLE_REAL);
+				else
+					OnEffectApply += AuraEffectApplyFn(spell_gen_override_display_power_AuraScript::OnApply, EFFECT_0, SPELL_AURA_402, AURA_EFFECT_HANDLE_REAL);
+				if (m_scriptSpellId == 123933 || m_scriptSpellId == 145627 || m_scriptSpellId == 145628)
+                    OnEffectRemove += AuraEffectRemoveFn(spell_gen_override_display_power_AuraScript::OnRemove, EFFECT_1, SPELL_AURA_402, AURA_EFFECT_HANDLE_REAL);
+				else if (m_scriptSpellId == 145044)
+					OnEffectRemove += AuraEffectRemoveFn(spell_gen_override_display_power_AuraScript::OnRemove, EFFECT_4, SPELL_AURA_402, AURA_EFFECT_HANDLE_REAL);
+				else
+					OnEffectRemove += AuraEffectRemoveFn(spell_gen_override_display_power_AuraScript::OnRemove, EFFECT_0, SPELL_AURA_402, AURA_EFFECT_HANDLE_REAL);
+            }
+        };
+
+        AuraScript* GetAuraScript() const override
+        {
+            return new spell_gen_override_display_power_AuraScript();
+        }
+};
+
 void AddSC_generic_spell_scripts()
 {
     new spell_gen_absorb0_hitlimit1();
@@ -3702,13 +3643,11 @@ void AddSC_generic_spell_scripts()
     new spell_gen_pet_summoned();
     new spell_gen_profession_research();
     new spell_gen_remove_flight_auras();
-    new spell_gen_replenishment();
     // Running Wild
     new spell_gen_running_wild();
     new spell_gen_two_forms();
     new spell_gen_darkflight();
     /*                          */
-    new spell_gen_seaforium_blast();
     new spell_gen_spectator_cheer_trigger();
     new spell_gen_spirit_healer_res();
     new spell_gen_summon_elemental("spell_gen_summon_fire_elemental", SPELL_SUMMON_FIRE_ELEMENTAL);
@@ -3723,4 +3662,5 @@ void AddSC_generic_spell_scripts()
     new spell_gen_vendor_bark_trigger();
     new spell_gen_wg_water();
     new spell_gen_whisper_gulch_yogg_saron_whisper();
+    new spell_gen_override_display_power();
 }

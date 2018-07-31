@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -87,7 +87,7 @@ void CalendarMgr::LoadFromDB()
     count = 0;
 
     //                                                       0   1      2        3       4       5           6     7
-    if (QueryResult result = CharacterDatabase.Query("SELECT id, event, invitee, sender, status, statustime, rank, text FROM calendar_invites"))
+    if (QueryResult result = CharacterDatabase.Query("SELECT id, event, invitee, sender, status, statustime, mod_rank, text FROM calendar_invites"))
         do
         {
             Field* fields = result->Fetch();

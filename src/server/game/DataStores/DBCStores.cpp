@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -89,6 +89,7 @@ DBCStorage <CriteriaTreeEntry> sCriteriaTreeStore(CriteriaTreefmt);
 uint32 PowersByClass[MAX_CLASSES][MAX_POWERS];
 
 DBCStorage <DestructibleModelDataEntry> sDestructibleModelDataStore(DestructibleModelDatafmt);
+DBCStorage <DifficultyEntry> sDifficultyStore(Difficultyfmt);
 DBCStorage <DungeonEncounterEntry> sDungeonEncounterStore(DungeonEncounterfmt);
 DBCStorage <DurabilityQualityEntry> sDurabilityQualityStore(DurabilityQualityfmt);
 DBCStorage <DurabilityCostsEntry> sDurabilityCostsStore(DurabilityCostsfmt);
@@ -264,7 +265,10 @@ DBCStorage <WMOAreaTableEntry> sWMOAreaTableStore(WMOAreaTableEntryfmt);
 DBCStorage <WorldMapAreaEntry> sWorldMapAreaStore(WorldMapAreaEntryfmt);
 DBCStorage <WorldMapOverlayEntry> sWorldMapOverlayStore(WorldMapOverlayEntryfmt);
 DBCStorage <WorldSafeLocsEntry> sWorldSafeLocsStore(WorldSafeLocsEntryfmt);
-DBCStorage <PhaseEntry> sPhaseStores(PhaseEntryfmt);
+DBCStorage <PhaseEntry> sPhaseStore(PhaseEntryfmt);
+DBCStorage <PhaseGroupEntry> sPhaseGroupStore(PhaseGroupfmt);
+
+PhaseGroupContainer sPhasesByGroup;
 
 typedef std::list<std::string> StoreProblemList;
 
@@ -397,6 +401,7 @@ void LoadDBCStores(const std::string& dataPath)
     LoadDBC(availableDbcLocales, bad_dbc_files, sCriteriaStore,               dbcPath, "Criteria.dbc");//18414
     LoadDBC(availableDbcLocales, bad_dbc_files, sCriteriaTreeStore,           dbcPath, "CriteriaTree.dbc");//18414
     LoadDBC(availableDbcLocales, bad_dbc_files, sDestructibleModelDataStore,  dbcPath, "DestructibleModelData.dbc");//15595
+    LoadDBC(availableDbcLocales, bad_dbc_files, sDifficultyStore,             dbcPath, "Difficulty.dbc"); // 18414
     LoadDBC(availableDbcLocales, bad_dbc_files, sDungeonEncounterStore,       dbcPath, "DungeonEncounter.dbc");//15595
     LoadDBC(availableDbcLocales, bad_dbc_files, sDurabilityCostsStore,        dbcPath, "DurabilityCosts.dbc");//15595
     LoadDBC(availableDbcLocales, bad_dbc_files, sDurabilityQualityStore,      dbcPath, "DurabilityQuality.dbc");//15595
@@ -477,16 +482,15 @@ void LoadDBCStores(const std::string& dataPath)
     LoadDBC(availableDbcLocales, bad_dbc_files, sLFGDungeonStore,             dbcPath, "LfgDungeons.dbc");//15595
     LoadDBC(availableDbcLocales, bad_dbc_files, sLiquidTypeStore,             dbcPath, "LiquidType.dbc");//15595
     LoadDBC(availableDbcLocales, bad_dbc_files, sLockStore,                   dbcPath, "Lock.dbc");//15595
-    LoadDBC(availableDbcLocales, bad_dbc_files, sPhaseStores,                 dbcPath, "Phase.dbc");//15595
 
     LoadDBC(availableDbcLocales, bad_dbc_files, sMailTemplateStore,           dbcPath, "MailTemplate.dbc");//15595
     LoadDBC(availableDbcLocales, bad_dbc_files, sMapStore,                    dbcPath, "Map.dbc");//15595
     LoadDBC(availableDbcLocales, bad_dbc_files, sMapDifficultyStore,          dbcPath, "MapDifficulty.dbc");//15595
     // fill data
-    sMapDifficultyMap[MAKE_PAIR32(0, 0)] = MapDifficulty(0, 0, false);//map 0 is missingg from MapDifficulty.dbc use this till its ported to sql
+    sMapDifficultyMap[0][0] = MapDifficulty(DIFFICULTY_NONE, "", 0, 0, false);//map 0 is missingg from MapDifficulty.dbc use this till its ported to sql
     for (uint32 i = 0; i < sMapDifficultyStore.GetNumRows(); ++i)
         if (MapDifficultyEntry const* entry = sMapDifficultyStore.LookupEntry(i))
-            sMapDifficultyMap[MAKE_PAIR32(entry->MapId, entry->Difficulty)] = MapDifficulty(entry->resetTime, entry->maxPlayers, entry->areaTriggerText[0] > 0);
+            sMapDifficultyMap[entry->MapId][entry->Difficulty] = MapDifficulty(entry->Difficulty, entry->areaTriggerText, entry->resetTime, entry->maxPlayers, entry->areaTriggerText[0] > 0);
     sMapDifficultyStore.Clear();
 
     LoadDBC(availableDbcLocales, bad_dbc_files, sMountCapabilityStore,        dbcPath, "MountCapability.dbc");//15595
@@ -501,6 +505,13 @@ void LoadDBCStores(const std::string& dataPath)
     LoadDBC(availableDbcLocales, bad_dbc_files, sModifierTreeStore,           dbcPath, "ModifierTree.dbc");//18414
     LoadDBC(availableDbcLocales, bad_dbc_files, sMovieStore,                  dbcPath, "Movie.dbc");//15595
     LoadDBC(availableDbcLocales, bad_dbc_files, sOverrideSpellDataStore,      dbcPath, "OverrideSpellData.dbc");//15595
+
+    LoadDBC(availableDbcLocales, bad_dbc_files, sPhaseStore, dbcPath, "Phase.dbc"); // 18414
+    LoadDBC(availableDbcLocales, bad_dbc_files, sPhaseGroupStore, dbcPath, "PhaseXPhaseGroup.dbc"); // 18414
+    for (uint32 i = 0; i < sPhaseGroupStore.GetNumRows(); ++i)
+        if (PhaseGroupEntry const* group = sPhaseGroupStore.LookupEntry(i))
+            if (PhaseEntry const* phase = sPhaseStore.LookupEntry(group->PhaseId))
+                sPhasesByGroup[group->GroupId].insert(phase->ID);
 
     LoadDBC(availableDbcLocales, bad_dbc_files, sPvPDifficultyStore,          dbcPath, "PvpDifficulty.dbc");//15595
     for (uint32 i = 0; i < sPvPDifficultyStore.GetNumRows(); ++i)
@@ -566,8 +577,7 @@ void LoadDBCStores(const std::string& dataPath)
     // LoadDBC(availableDbcLocales, bad_dbc_files, sSpellDifficultyStore,        dbcPath, "SpellDifficulty.dbc", &CustomSpellDifficultyfmt, &CustomSpellDifficultyIndex);//15595 -- DBC gone, wtf blizzard ...
     LoadDBC(availableDbcLocales, bad_dbc_files, sSpellDurationStore,          dbcPath, "SpellDuration.dbc");//15595
     LoadDBC(availableDbcLocales, bad_dbc_files, sSpellFocusObjectStore,       dbcPath, "SpellFocusObject.dbc");//15595
-    // DISABLED - needs more research
-    //LoadDBC(availableDbcLocales, bad_dbc_files, sSpellItemEnchantmentStore,   dbcPath, "SpellItemEnchantment.dbc");//15595
+    LoadDBC(availableDbcLocales, bad_dbc_files, sSpellItemEnchantmentStore,   dbcPath, "SpellItemEnchantment.dbc");//18414
     LoadDBC(availableDbcLocales, bad_dbc_files, sSpellMiscStore,              dbcPath, "SpellMisc.dbc");//17538
     LoadDBC(availableDbcLocales, bad_dbc_files, sSpellEffectScalingStore,     dbcPath, "SpellEffectScaling.dbc");//17538
     LoadDBC(availableDbcLocales, bad_dbc_files, sSpellItemEnchantmentConditionStore, dbcPath, "SpellItemEnchantmentCondition.dbc");//15595
@@ -689,7 +699,7 @@ void LoadDBCStores(const std::string& dataPath)
 
         SpellDifficultyEntry newEntry;
         memset(newEntry.SpellID, 0, 4*sizeof(uint32));
-        for (uint32 x = 0; x < MAX_DIFFICULTY; ++x)
+        for (uint32 x = 0; x < 4; ++x)
         {
             if (spellDiff->SpellID[x] <= 0 || !sSpellStore.LookupEntry(spellDiff->SpellID[x]))
             {
@@ -704,7 +714,7 @@ void LoadDBCStores(const std::string& dataPath)
         if (newEntry.SpellID[0] <= 0 || newEntry.SpellID[1] <= 0)//id0-1 must be always set!
             continue;
 
-        for (uint32 x = 0; x < MAX_DIFFICULTY; ++x)
+        for (uint32 x = 0; x < 4; ++x)
             sSpellMgr->SetSpellDifficultyId(uint32(newEntry.SpellID[x]), spellDiff->ID);
     }
 
@@ -1188,33 +1198,61 @@ std::vector<uint32> const* GetSpecializationSpells(uint32 specializationId)
     return NULL;
 }
 
-MapDifficulty const* GetMapDifficultyData(uint32 mapId, Difficulty difficulty)
+MapDifficulty const* GetDefaultMapDifficulty(uint32 mapId)
 {
-    MapDifficultyMap::const_iterator itr = sMapDifficultyMap.find(MAKE_PAIR32(mapId, difficulty));
-    return itr != sMapDifficultyMap.end() ? &itr->second : NULL;
-}
+    auto itr = sMapDifficultyMap.find(mapId);
+    if (itr == sMapDifficultyMap.end())
+        return nullptr;
 
-MapDifficulty const* GetDownscaledMapDifficultyData(uint32 mapId, Difficulty &difficulty)
-{
-    uint32 tmpDiff = difficulty;
-    MapDifficulty const* mapDiff = GetMapDifficultyData(mapId, Difficulty(tmpDiff));
-    if (!mapDiff)
+    if (itr->second.empty())
+        return nullptr;
+
+    for (auto& p : itr->second)
     {
-        if (tmpDiff > RAID_DIFFICULTY_25MAN_NORMAL) // heroic, downscale to normal
-            tmpDiff -= 2;
-        else
-            tmpDiff -= 1;   // any non-normal mode for raids like tbc (only one mode)
+        DifficultyEntry const* difficulty = sDifficultyStore.LookupEntry(p.first);
+        if (!difficulty)
+            continue;
 
-        // pull new data
-        mapDiff = GetMapDifficultyData(mapId, Difficulty(tmpDiff)); // we are 10 normal or 25 normal
-        if (!mapDiff)
-        {
-            tmpDiff -= 1;
-            mapDiff = GetMapDifficultyData(mapId, Difficulty(tmpDiff)); // 10 normal
-        }
+        if (difficulty->flags & 0x06)
+            return &p.second;
     }
 
-    difficulty = Difficulty(tmpDiff);
+    return &itr->second.begin()->second;
+}
+
+MapDifficulty const* GetMapDifficultyData(uint32 mapId, DifficultyID difficulty)
+{
+    auto itr = sMapDifficultyMap.find(mapId);
+    if (itr == sMapDifficultyMap.end())
+        return nullptr;
+
+    auto diffItr = itr->second.find(difficulty);
+    if (diffItr == itr->second.end())
+        return nullptr;
+
+    return &diffItr->second;
+}
+
+MapDifficulty const* GetDownscaledMapDifficultyData(uint32 mapId, DifficultyID &difficulty)
+{
+    DifficultyEntry const* diffEntry = sDifficultyStore.LookupEntry(difficulty);
+    if (!diffEntry)
+        return GetDefaultMapDifficulty(mapId);
+
+    uint32 tmpDiff = difficulty;
+    MapDifficulty const* mapDiff = GetMapDifficultyData(mapId, DifficultyID(tmpDiff));
+    while (!mapDiff)
+    {
+        tmpDiff = diffEntry->DownscaleID;
+        diffEntry = sDifficultyStore.LookupEntry(tmpDiff);
+        if (!diffEntry)
+            return GetDefaultMapDifficulty(mapId);
+
+        // pull new data
+        mapDiff = GetMapDifficultyData(mapId, DifficultyID(tmpDiff));
+    }
+
+    difficulty = DifficultyID(tmpDiff);
     return mapDiff;
 }
 
@@ -1441,7 +1479,7 @@ DigsitePOIPolygon const* GetDigsitePOIPolygon(uint32 digsiteId)
 }
 
 /// Returns LFGDungeonEntry for a specific map and difficulty. Will return first found entry if multiple dungeons use the same map (such as Scarlet Monastery)
-LFGDungeonEntry const* GetLFGDungeon(uint32 mapId, Difficulty difficulty)
+LFGDungeonEntry const* GetLFGDungeon(uint32 mapId, DifficultyID difficulty)
 {
     for (uint32 i = 0; i < sLFGDungeonStore.GetNumRows(); ++i)
     {
@@ -1449,9 +1487,14 @@ LFGDungeonEntry const* GetLFGDungeon(uint32 mapId, Difficulty difficulty)
         if (!dungeon)
             continue;
 
-        if (dungeon->map == int32(mapId) && Difficulty(dungeon->difficulty) == difficulty)
+        if (dungeon->map == int32(mapId) && DifficultyID(dungeon->difficulty) == difficulty)
             return dungeon;
     }
 
     return NULL;
+}
+
+std::set<uint32> const& GetPhasesForGroup(uint32 group)
+{
+    return sPhasesByGroup[group];
 }

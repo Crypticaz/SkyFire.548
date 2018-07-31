@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -485,7 +485,7 @@ bool Map::AddPlayerToMap(Player* player)
 
     player->m_clientGUIDs.clear();
     player->UpdateObjectVisibility(false);
-
+    player->UpdatePhasing();
     sScriptMgr->OnPlayerEnterMap(this, player);
     return true;
 }
@@ -543,6 +543,8 @@ bool Map::AddToMap(T* obj)
 
     if (obj->isActiveObject())
         AddToActive(obj);
+
+    obj->RebuildTerrainSwaps();
 
     //something, such as vehicle, needs to be update immediately
     //also, trigger needs to cast spell, if not update, cannot see visual
@@ -930,6 +932,7 @@ void Map::GameObjectRelocation(GameObject* go, float x, float y, float z, float 
     else
     {
         go->Relocate(x, y, z, orientation);
+        go->UpdateModelPosition();
         go->UpdateObjectVisibility(false);
         RemoveGameObjectFromMoveList(go);
     }
@@ -1057,6 +1060,7 @@ void Map::MoveAllGameObjectsInMoveList()
         {
             // update pos
             go->Relocate(go->_newPosition);
+            go->UpdateModelPosition();
             go->UpdateObjectVisibility(false);
         }
         else
@@ -2721,7 +2725,7 @@ bool InstanceMap::AddPlayerToMap(Player* player)
             //return false;
 
         // Dungeon only code
-        if (IsDungeon())
+        if (IsInstance())
         {
             Group* group = player->GetGroup();
 
@@ -2734,13 +2738,13 @@ bool InstanceMap::AddPlayerToMap(Player* player)
             if (!mapSave)
             {
                 SF_LOG_INFO("maps", "InstanceMap::Add: creating instance save for map %d spawnmode %d with instance id %d", GetId(), GetSpawnMode(), GetInstanceId());
-                mapSave = sInstanceSaveMgr->AddInstanceSave(GetId(), GetInstanceId(), Difficulty(GetSpawnMode()), 0, true);
+                mapSave = sInstanceSaveMgr->AddInstanceSave(GetId(), GetInstanceId(), DifficultyID(GetSpawnMode()), 0, true);
             }
 
             ASSERT(mapSave);
 
             // check for existing instance binds
-            InstancePlayerBind* playerBind = player->GetBoundInstance(GetId(), Difficulty(GetSpawnMode()));
+            InstancePlayerBind* playerBind = player->GetBoundInstance(GetId(), DifficultyID(GetSpawnMode()));
             if (playerBind && playerBind->perm)
             {
                 // cannot enter other instances if bound permanently
@@ -2787,8 +2791,9 @@ bool InstanceMap::AddPlayerToMap(Player* player)
                             WorldPacket data(SMSG_INSTANCE_LOCK_WARNING_QUERY, 10);
                             data << uint32(60000);
                             data << uint32(i_data ? i_data->GetCompletedEncounterMask() : 0);
-                            data << uint8(0);
-                            data << uint8(0); // events it throws:  1 : INSTANCE_LOCK_WARNING   0 : INSTANCE_LOCK_STOP / INSTANCE_LOCK_START
+                            data.WriteBit(0); // events it throws:  1 : INSTANCE_LOCK_WARNING   0 : INSTANCE_LOCK_STOP / INSTANCE_LOCK_START
+                            data.WriteBit(0);
+                            data.FlushBits();
                             player->GetSession()->SendPacket(&data);
                             player->SetPendingBind(mapSave->GetInstanceId(), 60000);
                         }
@@ -2925,7 +2930,7 @@ bool InstanceMap::Reset(uint8 method)
 
 void InstanceMap::PermBindAllPlayers(Player* source)
 {
-    if (!IsDungeon())
+    if (!IsInstance())
         return;
 
     InstanceSave* save = sInstanceSaveMgr->GetInstanceSave(GetInstanceId());
@@ -2946,8 +2951,9 @@ void InstanceMap::PermBindAllPlayers(Player* source)
         if (!bind || !bind->perm)
         {
             player->BindToInstance(save, true);
-            WorldPacket data(SMSG_INSTANCE_SAVE_CREATED, 4);
-            data << uint32(0);
+            WorldPacket data(SMSG_INSTANCE_SAVE_CREATED, 1);
+            data.WriteBit(player->IsGameMaster()); // isGM?
+            data.FlushBits();
             player->GetSession()->SendPacket(&data);
 
             player->GetSession()->SendCalendarRaidLockout(save, true);
@@ -2972,7 +2978,7 @@ void InstanceMap::UnloadAll()
 void InstanceMap::SendResetWarnings(uint32 timeLeft) const
 {
     for (MapRefManager::const_iterator itr = m_mapRefManager.begin(); itr != m_mapRefManager.end(); ++itr)
-        itr->GetSource()->SendInstanceResetWarning(GetId(), itr->GetSource()->GetDifficulty(IsRaid()), timeLeft);
+        itr->GetSource()->SendInstanceResetWarning(GetId(), itr->GetSource()->GetDifficulty(GetEntry()), timeLeft);
 }
 
 void InstanceMap::SetResetSchedule(bool on)
@@ -2980,19 +2986,38 @@ void InstanceMap::SetResetSchedule(bool on)
     // only for normal instances
     // the reset time is only scheduled when there are no payers inside
     // it is assumed that the reset time will rarely (if ever) change while the reset is scheduled
-    if (IsDungeon() && !HavePlayers() && !IsRaidOrHeroicDungeon())
+    if (IsInstance() && !HavePlayers() && !IsRaidOrHeroicDungeon())
     {
         if (InstanceSave* save = sInstanceSaveMgr->GetInstanceSave(GetInstanceId()))
-            sInstanceSaveMgr->ScheduleReset(on, save->GetResetTime(), InstanceSaveManager::InstResetEvent(0, GetId(), Difficulty(GetSpawnMode()), GetInstanceId()));
+            sInstanceSaveMgr->ScheduleReset(on, save->GetResetTime(), InstanceSaveManager::InstResetEvent(0, GetId(), DifficultyID(GetSpawnMode()), GetInstanceId()));
         else
             SF_LOG_ERROR("maps", "InstanceMap::SetResetSchedule: cannot turn schedule %s, there is no save information for instance (map [id: %u, name: %s], instance id: %u, difficulty: %u)",
-                on ? "on" : "off", GetId(), GetMapName(), GetInstanceId(), Difficulty(GetSpawnMode()));
+                on ? "on" : "off", GetId(), GetMapName(), GetInstanceId(), DifficultyID(GetSpawnMode()));
     }
 }
 
 MapDifficulty const* Map::GetMapDifficulty() const
 {
     return GetMapDifficultyData(GetId(), GetDifficulty());
+}
+
+bool Map::IsHeroic() const
+{
+    if (DifficultyEntry const* difficulty = sDifficultyStore.LookupEntry(i_spawnMode))
+    {
+        switch (i_spawnMode)
+        {
+            case DIFFICULTY_10MAN_HEROIC:
+            case DIFFICULTY_25MAN_HEROIC:
+            case DIFFICULTY_HEROIC:
+            case DIFFICULTY_SCE_HEROIC:
+                return true;
+            default:
+                return false;
+                break;
+        }
+    }
+    return false;
 }
 
 uint32 InstanceMap::GetMaxPlayers() const
@@ -3003,7 +3028,7 @@ uint32 InstanceMap::GetMaxPlayers() const
             return mapDiff->maxPlayers;
         else                                                // DBC have 0 maxplayers for heroic instances with expansion < 2
         {                                                   // The heroic entry exists, so we don't have to check anything, simply return normal max players
-            MapDifficulty const* normalDiff = GetMapDifficultyData(GetId(), REGULAR_DIFFICULTY);
+            MapDifficulty const* normalDiff = GetMapDifficultyData(GetId(), DIFFICULTY_NONE);
             return normalDiff ? normalDiff->maxPlayers : 0;
         }
     }

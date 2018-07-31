@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -57,7 +57,7 @@ protected:
         // client's value is 20, blizzs use 2-3 steps to compute length
         STEPS_PER_SEGMENT = 3
     };
-    static_assert(STEPS_PER_SEGMENT > 0, "shouldn't be lesser than 1");
+    static_assert(STEPS_PER_SEGMENT > 0, "STEPS_PER_SEGMENT shouldn't be lesser than 1");
 
 protected:
     void EvaluateLinear(index_type, float, Vector3&) const;

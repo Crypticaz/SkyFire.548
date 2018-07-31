@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -91,7 +91,6 @@ void AddSC_wp_commandscript();
 #ifdef SCRIPTS
 //world
 void AddSC_areatrigger_scripts();
-void AddSC_emerald_dragons();
 void AddSC_generic_creature();
 void AddSC_go_scripts();
 void AddSC_guards();
@@ -666,20 +665,6 @@ void AddSC_kezan();
 void AddSC_event_childrens_week();
 
 // Pandaria
-void AddSC_boss_ordos();
-//void AddSC_dread_wastes();
-//void AddSC_isle_of_giants();
-void AddSC_isle_of_thunder();
-//void AddSC_krasarang_wilds();
-//void AddSC_kun_lai_summit();
-//void AddSC_the_jade_forest();
-//void AddSC_the_situation_in_dalaran();
-//void AddSC_the_veiled_stair();
-//void AddSC_timeless_isle();
-//void AddSC_townlong_steppes();
-//void AddSC_vale_of_eternal_blossoms();
-//void AddSC_valley_of_the_four_winds();
-void AddSC_zone_wandering_island();
 
 // Pets
 void AddSC_deathknight_pet_scripts();
@@ -802,7 +787,6 @@ void AddWorldScripts()
 {
 #ifdef SCRIPTS
     AddSC_areatrigger_scripts();
-    AddSC_emerald_dragons();
     AddSC_generic_creature();
     AddSC_go_scripts();
     AddSC_guards();
@@ -1405,25 +1389,11 @@ void AddEventScripts()
 #endif
 }
 
-void AddPandariaScripts()
-{
-#ifdef SCRIPTS
-    AddSC_boss_ordos();
-    //AddSC_dread_wastes();
-    //AddSC_isle_of_giants();
-    AddSC_isle_of_thunder();
-    //AddSC_krasarang_wilds();
-    //AddSC_kun_lai_summit();
-    //AddSC_the_jade_forest();
-    //AddSC_the_situation_in_dalaran();
-    //AddSC_the_veiled_stair();
-    //AddSC_timeless_isle();
-    //AddSC_townlong_steppes();
-    //AddSC_vale_of_eternal_blossoms();
-    //AddSC_valley_of_the_four_winds();
-    AddSC_zone_wandering_island();
-#endif
-}
+//void AddPandariaScripts()
+//{
+//#ifdef SCRIPTS
+//#endif
+//}
 
 void AddPetScripts()
 {

@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -119,17 +119,17 @@ void GroupMgr::LoadGroups()
         uint32 oldMSTime = getMSTime();
 
         // Delete all groups whose leader does not exist
-        CharacterDatabase.DirectExecute("DELETE FROM groups WHERE leaderGuid NOT IN (SELECT guid FROM characters)");
+        CharacterDatabase.DirectExecute("DELETE FROM parties WHERE leaderGuid NOT IN (SELECT guid FROM characters)");
         // Delete all groups with less than 2 members
-        CharacterDatabase.DirectExecute("DELETE FROM groups WHERE guid NOT IN (SELECT guid FROM group_member GROUP BY guid HAVING COUNT(guid) > 1)");
+        CharacterDatabase.DirectExecute("DELETE FROM parties WHERE guid NOT IN (SELECT guid FROM party_member GROUP BY guid HAVING COUNT(guid) > 1)");
 
         //                                                        0              1           2             3                 4      5          6      7         8       9
         QueryResult result = CharacterDatabase.Query("SELECT g.leaderGuid, g.lootMethod, g.looterGuid, g.lootThreshold, g.icon1, g.icon2, g.icon3, g.icon4, g.icon5, g.icon6"
             //  10         11          12         13              14            15         16           17
-            ", g.icon7, g.icon8, g.groupType, g.difficulty, g.raiddifficulty, g.guid, lfg.dungeon, lfg.state FROM groups g LEFT JOIN lfg_data lfg ON lfg.guid = g.guid ORDER BY g.guid ASC");
+            ", g.icon7, g.icon8, g.partyType, g.difficulty, g.raiddifficulty, g.guid, lfg.dungeon, lfg.state FROM parties g LEFT JOIN lfg_data lfg ON lfg.guid = g.guid ORDER BY g.guid ASC");
         if (!result)
         {
-            SF_LOG_INFO("server.loading", ">> Loaded 0 group definitions. DB table `groups` is empty!");
+            SF_LOG_INFO("server.loading", ">> Loaded 0 group definitions. DB table `parties` is empty!");
             return;
         }
 
@@ -161,17 +161,17 @@ void GroupMgr::LoadGroups()
     {
         uint32 oldMSTime = getMSTime();
 
-        // Delete all rows from group_member or group_instance with no group
-        CharacterDatabase.DirectExecute("DELETE FROM group_member WHERE guid NOT IN (SELECT guid FROM groups)");
-        CharacterDatabase.DirectExecute("DELETE FROM group_instance WHERE guid NOT IN (SELECT guid FROM groups)");
+        // Delete all rows from party_member and party_instance with no group
+        CharacterDatabase.DirectExecute("DELETE FROM party_member WHERE guid NOT IN (SELECT guid FROM parties)");
+        CharacterDatabase.DirectExecute("DELETE FROM party_instance WHERE guid NOT IN (SELECT guid FROM parties)");
         // Delete all members that does not exist
-        CharacterDatabase.DirectExecute("DELETE FROM group_member WHERE memberGuid NOT IN (SELECT guid FROM characters)");
+        CharacterDatabase.DirectExecute("DELETE FROM party_member WHERE memberGuid NOT IN (SELECT guid FROM characters)");
 
         //                                                    0        1           2            3       4
-        QueryResult result = CharacterDatabase.Query("SELECT guid, memberGuid, memberFlags, subgroup, roles FROM group_member ORDER BY guid");
+        QueryResult result = CharacterDatabase.Query("SELECT guid, memberGuid, memberFlags, subparty, roles FROM party_member ORDER BY guid");
         if (!result)
         {
-            SF_LOG_INFO("server.loading", ">> Loaded 0 group members. DB table `group_member` is empty!");
+            SF_LOG_INFO("server.loading", ">> Loaded 0 group members. DB table `party_member` is empty!");
             return;
         }
 
@@ -199,11 +199,11 @@ void GroupMgr::LoadGroups()
         uint32 oldMSTime = getMSTime();
         //                                                   0           1        2              3             4             5            6
         QueryResult result = CharacterDatabase.Query("SELECT gi.guid, i.map, gi.instance, gi.permanent, i.difficulty, i.resettime, COUNT(g.guid) "
-            "FROM group_instance gi INNER JOIN instance i ON gi.instance = i.id "
-            "LEFT JOIN character_instance ci LEFT JOIN groups g ON g.leaderGuid = ci.guid ON ci.instance = gi.instance AND ci.permanent = 1 GROUP BY gi.instance ORDER BY gi.guid");
+            "FROM party_instance gi INNER JOIN instance i ON gi.instance = i.id "
+            "LEFT JOIN character_instance ci LEFT JOIN parties g ON g.leaderGuid = ci.guid ON ci.instance = gi.instance AND ci.permanent = 1 GROUP BY gi.instance ORDER BY gi.guid");
         if (!result)
         {
-            SF_LOG_INFO("server.loading", ">> Loaded 0 group-instance saves. DB table `group_instance` is empty!");
+            SF_LOG_INFO("server.loading", ">> Loaded 0 group-instance saves. DB table `party_instance` is empty!");
             return;
         }
 
@@ -215,20 +215,18 @@ void GroupMgr::LoadGroups()
             // group will never be NULL (we have run consistency sql's before loading)
 
             MapEntry const* mapEntry = sMapStore.LookupEntry(fields[1].GetUInt16());
-            if (!mapEntry || !mapEntry->IsDungeon())
+            if (!mapEntry || !mapEntry->IsInstance())
             {
-                SF_LOG_ERROR("sql.sql", "Incorrect entry in group_instance table : no dungeon map %d", fields[1].GetUInt16());
+                SF_LOG_ERROR("sql.sql", "Incorrect entry in party_instance table : no dungeon map %d", fields[1].GetUInt16());
                 continue;
             }
 
             uint32 diff = fields[4].GetUInt8();
-            if (diff >= uint32(mapEntry->IsRaid() ? MAX_RAID_DIFFICULTY : MAX_DUNGEON_DIFFICULTY))
-            {
-                SF_LOG_ERROR("sql.sql", "Wrong dungeon difficulty use in group_instance table: %d", diff + 1);
-                diff = 0;                                   // default for both difficaly types
-            }
+            DifficultyEntry const* difficultyEntry = sDifficultyStore.LookupEntry(diff);
+            if (!difficultyEntry || difficultyEntry->maptype != mapEntry->map_type)
+                continue;
 
-            InstanceSave* save = sInstanceSaveMgr->AddInstanceSave(mapEntry->MapID, fields[2].GetUInt32(), Difficulty(diff), time_t(fields[5].GetUInt32()), (bool)fields[6].GetUInt64(), true);
+            InstanceSave* save = sInstanceSaveMgr->AddInstanceSave(mapEntry->MapID, fields[2].GetUInt32(), DifficultyID(diff), time_t(fields[5].GetUInt32()), (bool)fields[6].GetUInt64(), true);
             group->BindToInstance(save, fields[3].GetBool(), true);
             ++count;
         }

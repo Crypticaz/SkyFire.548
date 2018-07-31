@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -338,7 +338,7 @@ enum AuraType
     SPELL_AURA_277                                          = 277,  // old SPELL_AURA_MOD_MAX_AFFECTED_TARGETS. unused 4.3.4
     SPELL_AURA_MOD_DISARM_RANGED                            = 278,
     SPELL_AURA_INITIALIZE_IMAGES                            = 279,
-    SPELL_AURA_280                                          = 280,  // old SPELL_AURA_MOD_ARMOR_PENETRATION_PCT unused 4.3.4
+    SPELL_AURA_MOD_ARMOR_PENETRATION_PCT                    = 280,  // 5.4.8 (125359 Tiger Power)
     SPELL_AURA_MOD_HONOR_GAIN_PCT                           = 281,
     SPELL_AURA_MOD_BASE_HEALTH_PCT                          = 282,
     SPELL_AURA_MOD_HEALING_RECEIVED                         = 283,  // Possibly only for some spell family class spells
@@ -384,7 +384,7 @@ enum AuraType
     SPELL_AURA_323                                          = 323,  // Not used in 4.3.4
     SPELL_AURA_324                                          = 324,  // spell critical chance (probably by school mask)
     SPELL_AURA_325                                          = 325,  // Not used in 4.3.4
-    SPELL_AURA_326                                          = 326,  // phase related
+    SPELL_AURA_PHASE_GROUP                                  = 326,  // phase related
     SPELL_AURA_327                                          = 327,  // Not used in 4.3.4
     SPELL_AURA_PROC_ON_POWER_AMOUNT                         = 328,
     SPELL_AURA_MOD_RUNE_REGEN_SPEED                         = 329,  // NYI

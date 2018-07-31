@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -72,9 +72,10 @@ uint32 GetSkillIdByClass(uint32 classId);
 std::list<uint32> GetSpellsForLevels(uint32 classId, uint32 raceMask, uint32 specializationId, uint32 minLevel, uint32 maxLevel);
 std::vector<uint32> const* GetSpecializationSpells(uint32 specializationId);
 
-typedef std::map<uint32/*pair32(map, diff)*/, MapDifficulty> MapDifficultyMap;
-MapDifficulty const* GetMapDifficultyData(uint32 mapId, Difficulty difficulty);
-MapDifficulty const* GetDownscaledMapDifficultyData(uint32 mapId, Difficulty &difficulty);
+typedef std::unordered_map<uint32, std::unordered_map<uint32, MapDifficulty>> MapDifficultyMap;
+MapDifficulty const* GetDefaultMapDifficulty(uint32 mapId);
+MapDifficulty const* GetMapDifficultyData(uint32 mapId, DifficultyID difficulty);
+MapDifficulty const* GetDownscaledMapDifficultyData(uint32 mapId, DifficultyID &difficulty);
 
 uint32 const* /*[MAX_TALENT_TABS]*/ GetClassSpecializations(uint8 classId);
 
@@ -90,7 +91,8 @@ typedef std::map<uint32 /*digsiteId*/, DigsitePOIPolygon> DigsitePOIPolygonConta
 DigsitePOIPolygon const* GetDigsitePOIPolygon(uint32 digsiteId);
 
 uint32 GetPowerIndexByClass(uint32 powerType, uint32 classId);
-LFGDungeonEntry const* GetLFGDungeon(uint32 mapId, Difficulty difficulty);
+LFGDungeonEntry const* GetLFGDungeon(uint32 mapId, DifficultyID difficulty);
+std::set<uint32> const& GetPhasesForGroup(uint32 group);
 
 extern SpecializationOverrideSpellsMap sSpecializationOverrideSpellMap;
 extern DBCStorage <AchievementEntry>             sAchievementStore;
@@ -122,6 +124,7 @@ extern DBCStorage <CurrencyTypesEntry>           sCurrencyTypesStore;
 extern DBCStorage <CriteriaEntry>                sCriteriaStore;
 extern DBCStorage <CriteriaTreeEntry>            sCriteriaTreeStore;
 extern DBCStorage <DestructibleModelDataEntry>   sDestructibleModelDataStore;
+extern DBCStorage <DifficultyEntry>              sDifficultyStore;
 extern DBCStorage <DungeonEncounterEntry>        sDungeonEncounterStore;
 extern DBCStorage <DurabilityCostsEntry>         sDurabilityCostsStore;
 extern DBCStorage <DurabilityQualityEntry>       sDurabilityQualityStore;
@@ -184,6 +187,7 @@ extern DBCStorage <MountCapabilityEntry>         sMountCapabilityStore;
 extern DBCStorage <MountTypeEntry>               sMountTypeStore;
 extern DBCStorage <NameGenEntry>                 sNameGenStore;
 extern DBCStorage <PhaseEntry>                   sPhaseStore;
+extern DBCStorage <PhaseGroupEntry>              sPhaseGroupStore;
 //extern DBCStorage <MapDifficultyEntry>           sMapDifficultyStore; -- use GetMapDifficultyData insteed
 extern MapDifficultyMap                          sMapDifficultyMap;
 extern DBCStorage <MovieEntry>                   sMovieStore;

@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -190,7 +190,8 @@ bool Pet::LoadPetFromDB(Player* owner, uint32 petEntry, uint32 petnumber, bool c
             GetGUIDLow(), GetEntry(), GetPositionX(), GetPositionY());
         return false;
     }
-
+    for (auto itr : owner->GetPhases())
+        SetPhased(itr, false, true);
     setPetType(petType);
     setFaction(owner->getFaction());
     SetUInt32Value(UNIT_FIELD_CREATED_BY_SPELL, summonSpellId);
@@ -1878,6 +1879,7 @@ bool Pet::Create(uint32 guidlow, Map* map, uint32 phaseMask, uint32 Entry, uint3
     if (!InitEntry(Entry))
         return false;
 
+    SetFlag(UNIT_FIELD_FLAGS2, UNIT_FLAG2_REGENERATE_POWER);
     SetSheath(SHEATH_STATE_MELEE);
 
     return true;

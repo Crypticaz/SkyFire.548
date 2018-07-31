@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -266,7 +266,6 @@ class Item : public Object
         bool IsInTrade() const { return mb_in_trade; }
 
         bool HasEnchantRequiredSkill(const Player* player) const;
-        uint32 GetEnchantRequiredLevel() const;
 
         bool IsFitToSpellRequirements(SpellInfo const* spellInfo) const;
         bool IsLimitedToAnotherMapOrZone(uint32 cur_mapId, uint32 cur_zoneId) const;
@@ -307,8 +306,6 @@ class Item : public Object
 
         std::string const& GetText() const { return m_text; }
         void SetText(std::string const& text) { m_text = text; }
-
-        void SendUpdateSockets();
 
         void SendTimeUpdate(Player* owner);
         void UpdateDuration(Player* owner, uint32 diff);

@@ -1,7 +1,7 @@
 /*
-* Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
-* Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
-* Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+* Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+* Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+* Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
 *
 * This program is free software; you can redistribute it and/or modify it
 * under the terms of the GNU General Public License as published by the
@@ -231,7 +231,8 @@ void WorldSession::HandleQuestgiverAcceptQuestOpcode(WorldPacket& recvData)
         {
             _player->AddQuest(quest, object);
 
-            if (quest->HasFlag(QUEST_FLAGS_PARTY_ACCEPT))
+            // QUEST_FLAGS_PARTY_ACCEPT
+            if (quest->HasFlag(QUEST_FLAGS_START_EVENT_MUST_COMPLETE))
             {
                 if (Group* group = _player->GetGroup())
                 {
@@ -433,13 +434,17 @@ void WorldSession::HandleQuestgiverChooseRewardOpcode(WorldPacket& recvData)
 
     Object* object = _player;
 
-    if (!quest->IsRewChoiceItemValid(reward))
+    if (quest->GetRewardPackageItemId() == 0)
     {
-        SF_LOG_ERROR("network", "Error in CMSG_QUEST_GIVER_CHOOSE_REWARD: player %s (guid %d) tried to get invalid reward (%u) (possible packet-hacking detected)", _player->GetName().c_str(), _player->GetGUIDLow(), reward);
-        return;
+        if (!quest->IsRewChoiceItemValid(reward))
+        {
+            SF_LOG_ERROR("network", "Error in CMSG_QUEST_GIVER_CHOOSE_REWARD: player %s (guid %d) tried to get invalid reward (%u) (possible packet-hacking detected)", _player->GetName().c_str(), _player->GetGUIDLow(), reward);
+            return;
+        }
     }
-
-    if (!quest->HasFlag(QUEST_FLAGS_AUTO_SUBMIT))
+    
+    // QUEST_FLAGS_AUTO_SUBMIT
+    if (!quest->HasFlag(QUEST_FLAGS_PLAYER_CAST_ACCEPT))
     {
         object = ObjectAccessor::GetObjectByTypeMask(*_player, guid, TYPEMASK_UNIT|TYPEMASK_GAMEOBJECT);
         if (!object || !object->hasInvolvedQuest(questId))
@@ -632,7 +637,8 @@ void WorldSession::HandleQuestConfirmAccept(WorldPacket& recvData)
 
     if (const Quest* quest = sObjectMgr->GetQuestTemplate(questId))
     {
-        if (!quest->HasFlag(QUEST_FLAGS_PARTY_ACCEPT))
+        // QUEST_FLAGS_PARTY_ACCEPT
+        if (!quest->HasFlag(QUEST_FLAGS_START_EVENT_MUST_COMPLETE))
             return;
 
         Player* originalPlayer = ObjectAccessor::FindPlayer(_player->GetDivider());

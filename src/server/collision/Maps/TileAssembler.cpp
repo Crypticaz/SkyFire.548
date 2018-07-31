@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -374,7 +374,7 @@ namespace VMAP
             std::string model_name(buff, name_length);
 
             WorldModel_Raw raw_model;
-            if (!raw_model.Read((iSrcDir + "/" + model_name).c_str()) )
+            if (!raw_model.Read((iSrcDir + "/" + model_name).c_str()))
                 continue;
 
             spawnedModelFiles.insert(model_name);
@@ -395,6 +395,17 @@ namespace VMAP
                 }
             }
 
+            if (bounds.isEmpty())
+            {
+                std::cout << "\nModel " << std::string(buff, name_length) << " has empty bounding box" << std::endl;
+                continue;
+            }
+
+            if (!bounds.isFinite())
+            {
+                std::cout << "\nModel " << std::string(buff, name_length) << " has invalid bounding box" << std::endl;
+                continue;
+            }
             fwrite(&displayId, sizeof(uint32), 1, model_list_copy);
             fwrite(&name_length, sizeof(uint32), 1, model_list_copy);
             fwrite(&buff, sizeof(char), name_length, model_list_copy);

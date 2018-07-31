@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -35,20 +35,18 @@ class event_commandscript : public CommandScript
 public:
     event_commandscript() : CommandScript("event_commandscript") { }
 
-    ChatCommand* GetCommands() const OVERRIDE
+    std::vector<ChatCommand> GetCommands() const OVERRIDE
     {
-        static ChatCommand eventCommandTable[] =
+        static std::vector<ChatCommand> eventCommandTable =
         {
-            { "activelist", rbac::RBAC_PERM_COMMAND_EVENT_ACTIVELIST, true, &HandleEventActiveListCommand, "", NULL },
-            { "start",      rbac::RBAC_PERM_COMMAND_EVENT_START,      true, &HandleEventStartCommand,      "", NULL },
-            { "stop",       rbac::RBAC_PERM_COMMAND_EVENT_STOP,       true, &HandleEventStopCommand,       "", NULL },
-            { "",           rbac::RBAC_PERM_COMMAND_EVENT,            true, &HandleEventInfoCommand,       "", NULL },
-            { NULL,         0,                                 false, NULL,                          "", NULL }
+            { "activelist", rbac::RBAC_PERM_COMMAND_EVENT_ACTIVELIST, true, &HandleEventActiveListCommand, "", },
+            { "start",      rbac::RBAC_PERM_COMMAND_EVENT_START,      true, &HandleEventStartCommand,      "", },
+            { "stop",       rbac::RBAC_PERM_COMMAND_EVENT_STOP,       true, &HandleEventStopCommand,       "", },
+            { "",           rbac::RBAC_PERM_COMMAND_EVENT,            true, &HandleEventInfoCommand,       "", },
         };
-        static ChatCommand commandTable[] =
+        static std::vector<ChatCommand> commandTable =
         {
             { "event", rbac::RBAC_PERM_COMMAND_EVENT, false, NULL, "", eventCommandTable },
-            { NULL,    0,                       false, NULL, "", NULL }
         };
         return commandTable;
     }

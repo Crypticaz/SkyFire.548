@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -51,28 +51,25 @@ class rbac_commandscript : public CommandScript
 public:
     rbac_commandscript() : CommandScript("rbac_commandscript") { }
 
-    ChatCommand* GetCommands() const
+    std::vector<ChatCommand> GetCommands() const
     {
-        static ChatCommand rbacAccountCommandTable[] =
+        static std::vector<ChatCommand> rbacAccountCommandTable =
         {
-            {        "list", rbac::RBAC_PERM_COMMAND_RBAC_ACC_PERM_LIST,   true, &HandleRBACPermListCommand,    "", NULL },
-            {       "grant", rbac::RBAC_PERM_COMMAND_RBAC_ACC_PERM_GRANT,  true, &HandleRBACPermGrantCommand,   "", NULL },
-            {        "deny", rbac::RBAC_PERM_COMMAND_RBAC_ACC_PERM_DENY,   true, &HandleRBACPermDenyCommand,    "", NULL },
-            {      "revoke", rbac::RBAC_PERM_COMMAND_RBAC_ACC_PERM_REVOKE, true, &HandleRBACPermRevokeCommand,  "", NULL },
-            {          NULL, 0, false, NULL, "", NULL }
+            {        "list", rbac::RBAC_PERM_COMMAND_RBAC_ACC_PERM_LIST,   true, &HandleRBACPermListCommand,    "", },
+            {       "grant", rbac::RBAC_PERM_COMMAND_RBAC_ACC_PERM_GRANT,  true, &HandleRBACPermGrantCommand,   "", },
+            {        "deny", rbac::RBAC_PERM_COMMAND_RBAC_ACC_PERM_DENY,   true, &HandleRBACPermDenyCommand,    "", },
+            {      "revoke", rbac::RBAC_PERM_COMMAND_RBAC_ACC_PERM_REVOKE, true, &HandleRBACPermRevokeCommand,  "", },
         };
 
-        static ChatCommand rbacCommandTable[] =
+        static std::vector<ChatCommand> rbacCommandTable =
         {
-            {    "account", rbac::RBAC_PERM_COMMAND_RBAC_ACC,  true, NULL, "", rbacAccountCommandTable },
-            {       "list", rbac::RBAC_PERM_COMMAND_RBAC_LIST, true, &HandleRBACListPermissionsCommand, "", NULL },
-            {         NULL, 0, false, NULL, "", NULL }
+            {    "account", rbac::RBAC_PERM_COMMAND_RBAC_ACC, true, NULL, "", rbacAccountCommandTable },
+            {    "list", rbac::RBAC_PERM_COMMAND_RBAC_LIST,   true, &HandleRBACListPermissionsCommand, "", },
         };
 
-        static ChatCommand commandTable[] =
+        static std::vector<ChatCommand> commandTable =
         {
             {       "rbac", rbac::RBAC_PERM_COMMAND_RBAC, true, NULL, "", rbacCommandTable },
-            {         NULL, 0, false, NULL, "", NULL }
         };
 
         return commandTable;

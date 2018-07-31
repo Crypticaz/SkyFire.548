@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -1048,7 +1048,7 @@ void WorldSession::SendTimezoneInformation()
     // GetTimeZoneInformation(&timeZoneInfo);
     // wcstombs(timezoneString, timeZoneInfo.StandardName, sizeof(timezoneString));
 
-    sprintf(timezoneString, "Etc/UTC"); // The method above cannot be used, because of non-english OS translations, so we send const data (possible strings are hardcoded in the client because of the same reason)
+    snprintf(timezoneString, sizeof(timezoneString), "Etc/UTC"); // The method above cannot be used, because of non-english OS translations, so we send const data (possible strings are hardcoded in the client because of the same reason)
 
     WorldPacket data(SMSG_SET_TIME_ZONE_INFORMATION, 2 + strlen(timezoneString) * 2);
     data.WriteBits(strlen(timezoneString), 7);

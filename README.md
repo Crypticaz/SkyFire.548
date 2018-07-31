@@ -1,11 +1,12 @@
-[![Stories in Ready](https://badge.waffle.io/ProjectSkyfire/SkyFire.548.png?label=ready&title=Ready)](https://waffle.io/ProjectSkyfire/SkyFire.548)
-# ![logo](http://www.projectskyfire.org/public/style_images/15_14_skyfire_logo.png)
+[![Stories in Ready](https://badge.waffle.io/ProjectSkyfire/SkyFire.548.png?label=ready&title=Ready)](https://waffle.io/ProjectSkyfire/SkyFire.548) [![Insight.io](https://insight.io/repoBadge/github.com/ProjectSkyfire/SkyFire.548)](https://insight.io/github.com/ProjectSkyfire/SkyFire.548)
+
+# ![logo](https://abload.de/img/15_14_skyfire_logoqyj68.png)
 
 ## Project Information
-SkyFire is a *MMORPG* Framework based mostly in C++.
+SkyFire is a *MMORPG* Framework based mostly on C++.
 
 SkyFireEMU is a MMORPG Framework based mostly on C++. It is completely 
-open source, and is community supported. It is derived
+open-source, and is community supported. It is derived
 from CactusEmu, TrinityCore, and MaNGOS, the Massive Network Game Object Servers, 
 and is based on the code of there projects with extensive changes over time to optimize, 
 improve and cleanup the code base at the same time as improving the in game mechanics
@@ -32,11 +33,11 @@ For further information on the SkyFire project, please visit our project website
 ## Requirements
 + Platform: Linux, Windows or Mac
 + Processor with SSE2 support
-+ ACE = 6.1.4  (Windows / Linux)
-+ MySQL = 5.6.36 (Windows / Linux)
-+ CMake = 3.8.1/2.8.11 (Windows / Linux)
-+ OpenSSL = 1.0.2L
-+ GCC = 4.7.2 (Linux only)
++ ACE = 6.3.3  (Linux only)
++ MySQL = 8.0 (Windows / Linux)
++ CMake = 3.8.1/3.5.1 (Windows / Linux)
++ OpenSSL = 1.1.0G
++ GCC = 8.1.0 (Linux only)
 + MS Visual Studio = 15 (2017) (Windows only)
 
 ## Install
@@ -68,8 +69,8 @@ Read file [THANKS](THANKS.md)
 Read File [TO-DO](TODO.md)
 
 ## Links
-Forum [http://www.projectskyfire.org](http://www.projectskyfire.org)
+Forum [https://forum.projectskyfire.org/](https://forum.projectskyfire.org/)
 
-Database [http://www.projectskyfire.org/index.php?/files/](http://www.projectskyfire.org/index.php?/files/)
+Database [https://forum.projectskyfire.org/index.php?/files/](https://forum.projectskyfire.org/index.php?/files/)
 
 Wiki [http://wiki.projectskyfire.org](http://wiki.projectskyfire.org)

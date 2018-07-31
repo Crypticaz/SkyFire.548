@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -605,7 +605,7 @@ void KillRewarder::_RewardGroup()
         // (battleground rewards only XP, that's why).
         if (!_isBattleGround || _xp)
         {
-            const bool isDungeon = !_isPvP && sMapStore.LookupEntry(_killer->GetMapId())->IsDungeon();
+            const bool isDungeon = !_isPvP && sMapStore.LookupEntry(_killer->GetMapId())->IsInstance();
             if (!_isBattleGround)
             {
                 // 3.1.2. Alter group rate if group is in raid (not for battlegrounds).
@@ -670,7 +670,7 @@ void KillRewarder::Reward()
 #ifdef _MSC_VER
 #pragma warning(disable:4355)
 #endif
-Player::Player(WorldSession* session): Unit(true), phaseMgr(this)
+Player::Player(WorldSession* session): Unit(true)
 {
 #ifdef _MSC_VER
 #pragma warning(default:4355)
@@ -814,9 +814,9 @@ Player::Player(WorldSession* session): Unit(true), phaseMgr(this)
     /////////////////// Instance System /////////////////////
 
     m_HomebindTimer = 0;
-    m_InstanceValid = true;
-    m_dungeonDifficulty = DUNGEON_DIFFICULTY_NORMAL;
-    m_raidDifficulty = RAID_DIFFICULTY_10MAN_NORMAL;
+    m_InstanceValid = true; 
+    m_dungeonDifficulty = DIFFICULTY_NORMAL;
+    m_raidDifficulty = DIFFICULTY_10MAN_NORMAL;
 
     m_lastPotionId = 0;
     _talentMgr = new PlayerTalentInfo();
@@ -951,7 +951,7 @@ void Player::CleanupsBeforeDelete(bool finalCleanup)
     Unit::CleanupsBeforeDelete(finalCleanup);
 
     // clean up player-instance binds, may unload some instance saves
-    for (uint8 i = 0; i < MAX_DIFFICULTY; ++i)
+    for (uint8 i = 0; i < 15; ++i)
         for (BoundInstancesMap::iterator itr = m_boundInstances[i].begin(); itr != m_boundInstances[i].end(); ++itr)
             itr->second.save->RemovePlayer(this);
 }
@@ -3029,9 +3029,6 @@ void Player::SetGameMaster(bool on)
 
         getHostileRefManager().setOnlineOfflineState(true);
         m_serverSideVisibilityDetect.SetValue(SERVERSIDE_VISIBILITY_GM, SEC_PLAYER);
-
-        phaseMgr.AddUpdateFlag(PHASE_UPDATE_FLAG_SERVERSIDE_CHANGED);
-        phaseMgr.Update();
     }
 
     UpdateObjectVisibility();
@@ -3258,6 +3255,9 @@ void Player::GiveLevel(uint8 level)
     for (uint8 i = STAT_STRENGTH; i < MAX_STATS; ++i)
         SetCreateStat(Stats(i), info.stats[i]);
 
+    if (getLevel() >= sWorld->getIntConfig(CONFIG_START_PETBAR_LEVEL))
+        PetSpellInitialize();
+
     SetCreateHealth(basehp);
     SetCreateMana(basemana);
 
@@ -3293,12 +3293,6 @@ void Player::GiveLevel(uint8 level)
     }
 
     UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_REACH_LEVEL);
-
-    PhaseUpdateData phaseUpdateData;
-    phaseUpdateData.AddConditionType(CONDITION_LEVEL);
-
-    phaseMgr.NotifyConditionChanged(phaseUpdateData);
-
     // Refer-A-Friend
     if (GetSession()->GetRecruiterId())
     {
@@ -4667,15 +4661,15 @@ bool Player::ResetTalents(bool noCost, bool resetTalents, bool resetSpecializati
 
     if (resetSpecialization)
     {
-        SetTalentSpecialization(GetActiveSpec(), 0);
-        SetUInt32Value(PLAYER_FIELD_CURRENT_SPEC_ID, 0);
-
         std::list<uint32> learnList = GetSpellsForLevels(0, getRaceMask(), GetTalentSpecialization(GetActiveSpec()), 0, getLevel());
         for (std::list<uint32>::const_iterator iter = learnList.begin(); iter != learnList.end(); ++iter)
         {
             if (HasSpell(*iter))
                 removeSpell(*iter, true);
         }
+
+        SetTalentSpecialization(GetActiveSpec(), 0);
+        SetUInt32Value(PLAYER_FIELD_CURRENT_SPEC_ID, 0);
     }
 
     SQLTransaction trans = CharacterDatabase.BeginTransaction();
@@ -7111,6 +7105,7 @@ uint32 Player::TeamForRace(uint8 race)
         {
             case 1: return HORDE;
             case 7: return ALLIANCE;
+            case 42: return PANDAREN_NEUTRAL;
         }
         SF_LOG_ERROR("entities.player", "Race (%u) has wrong teamid (%u) in DBC: wrong DBC files?", uint32(race), rEntry->TeamID);
     }
@@ -7233,7 +7228,7 @@ void Player::RewardReputation(Unit* victim, float rate)
     {
         // support for: Championing - http://www.wowwiki.com/Championing
         Map const* map = GetMap();
-        if (map && map->IsNonRaidDungeon())
+        if (map && map->IsNonRaidInstance())
             if (LFGDungeonEntry const* dungeon = GetLFGDungeon(map->GetId(), map->GetDifficulty()))
                 if (dungeon->reclevel == 80)
                     ChampioningFaction = GetChampioningFaction();
@@ -8098,13 +8093,12 @@ void Player::UpdateArea(uint32 newArea)
     // so apply them accordingly
     m_areaUpdateId    = newArea;
 
-    phaseMgr.AddUpdateFlag(PHASE_UPDATE_FLAG_AREA_UPDATE);
-
     AreaTableEntry const* area = GetAreaEntryByAreaID(newArea);
     pvpInfo.IsInFFAPvPArea = area && (area->flags & AREA_FLAG_ARENA);
     UpdatePvPState(true);
 
     UpdateAreaDependentAuras(newArea);
+    UpdateAreaPhase();
 
     // previously this was in UpdateZone (but after UpdateArea) so nothing will break
     pvpInfo.IsInNoPvPArea = false;
@@ -8116,14 +8110,10 @@ void Player::UpdateArea(uint32 newArea)
     }
     else
         RemoveByteFlag(UNIT_FIELD_SHAPESHIFT_FORM, 1, UNIT_BYTE2_FLAG_SANCTUARY);
-
-    phaseMgr.RemoveUpdateFlag(PHASE_UPDATE_FLAG_AREA_UPDATE);
 }
 
 void Player::UpdateZone(uint32 newZone, uint32 newArea)
 {
-    phaseMgr.AddUpdateFlag(PHASE_UPDATE_FLAG_ZONE_UPDATE);
-
     if (m_zoneUpdateId != newZone)
     {
         sOutdoorPvPMgr->HandlePlayerLeaveZone(this, m_zoneUpdateId);
@@ -8232,8 +8222,7 @@ void Player::UpdateZone(uint32 newZone, uint32 newArea)
     UpdateLocalChannels(newZone);
 
     UpdateZoneDependentAuras(newZone);
-
-    phaseMgr.RemoveUpdateFlag(PHASE_UPDATE_FLAG_ZONE_UPDATE);
+    UpdateAreaPhase();
 }
 
 //If players are too far away from the duel flag... they lose the duel
@@ -14565,7 +14554,7 @@ void Player::ApplyEnchantment(Item* item, EnchantmentSlot slot, bool apply, bool
     if (!ignore_condition && pEnchant->EnchantmentCondition && !EnchantmentFitsRequirements(pEnchant->EnchantmentCondition, -1))
         return;
 
-    if (pEnchant->requiredLevel > getLevel())
+    if ((pEnchant->requiredMinLevel > getLevel()) || (pEnchant->requiredMaxLevel < getLevel()))
         return;
 
     if (pEnchant->requiredSkill > 0 && pEnchant->requiredSkillValue > GetSkillValue(pEnchant->requiredSkill))
@@ -14989,59 +14978,52 @@ void Player::SendNewItem(Item* item, uint32 count, bool received, bool created, 
 
     uint32 itemSlot = (item->GetCount() == count) ? item->GetSlot() : -1;
 
-    ObjectGuid playerGuid = GetGUID();
-    ObjectGuid itemGuid = item->GetGUID();
+    ObjectGuid PlayerGUID = GetGUID();
+    ObjectGuid ItemGUID = item->GetGUID();
 
     WorldPacket data(SMSG_ITEM_PUSH_RESULT, 1 + 8 + 1 + 4 + 4 + 4 + 4 + 4 + 4 + 1 + 4 + 4 + 4);
-    data.WriteBit(itemGuid[2]);
-    data.WriteBit(playerGuid[4]);
-    data.WriteBit(itemGuid[5]);
+    data.WriteGuidMask(ItemGUID, 2);
+    data.WriteGuidMask(PlayerGUID, 4);
+    data.WriteGuidMask(ItemGUID, 5);
     data.WriteBit(1);                                       // display in chat
-    data.WriteBit(playerGuid[1]);
+    data.WriteGuidMask(PlayerGUID, 1);
     data.WriteBit(received);                                // 0 = looted, 1 = npc
-    data.WriteBit(itemGuid[4]);
-    data.WriteBit(playerGuid[6]);
-    data.WriteBit(playerGuid[5]);
-    data.WriteBit(playerGuid[7]);
-    data.WriteBit(playerGuid[0]);
-    data.WriteBit(itemGuid[0]);
-    data.WriteBit(itemGuid[7]);
-    data.WriteBit(playerGuid[2]);
-    data.WriteBit(itemGuid[6]);
+    data.WriteGuidMask(ItemGUID, 4);
+    data.WriteGuidMask(PlayerGUID, 6, 5, 7, 0);
+    data.WriteGuidMask(ItemGUID, 0, 7);
+    data.WriteGuidMask(PlayerGUID, 2);
+    data.WriteGuidMask(ItemGUID, 6);
     data.WriteBit(0);                                       // bonus loot
-    data.WriteBit(playerGuid[3]);
-    data.WriteBit(itemGuid[1]);
+    data.WriteGuidMask(PlayerGUID, 3);
+    data.WriteGuidMask(ItemGUID, 1);
     data.WriteBit(created);                                 // 0 = received. 1 = created
-    data.WriteBit(itemGuid[3]);
+    data.WriteGuidMask(ItemGUID, 3);
     data.FlushBits();
 
-    data.WriteByteSeq(playerGuid[1]);
-    data.WriteByteSeq(itemGuid[1]);
+    data.WriteGuidBytes(PlayerGUID, 1);
+    data.WriteGuidBytes(ItemGUID, 1);
     data << uint32(0);                                      // battle pet species
-    data.WriteByteSeq(itemGuid[0]);
-    data.WriteByteSeq(playerGuid[5]);
-    data.WriteByteSeq(playerGuid[2]);
+    data.WriteGuidBytes(ItemGUID, 0);
+    data.WriteGuidBytes(PlayerGUID, 5, 2);
     data << uint32(item->GetItemSuffixFactor());            // suffix factor
-    data.WriteByteSeq(itemGuid[7]);
+    data.WriteGuidBytes(ItemGUID, 7);
     data << uint32(0);                                      // battle pet quality
     data << uint32(item->GetEntry());                       // item id
     data << int32(item->GetItemRandomPropertyId());         // random item property id
-    data.WriteByteSeq(itemGuid[6]);
+    data.WriteGuidBytes(ItemGUID, 6);
     data << uint32(0);                                      // battle pet breed
     data << uint32(GetItemCount(item->GetEntry()));         // count of items in inventory
-    data.WriteByteSeq(itemGuid[2]);
-    data.WriteByteSeq(playerGuid[0]);
+    data.WriteGuidBytes(ItemGUID, 2);
+    data.WriteGuidBytes(PlayerGUID, 0);
     data << uint32(count);                                  // count of items
-    data.WriteByteSeq(playerGuid[5]);
-    data.WriteByteSeq(itemGuid[5]);
-    data.WriteByteSeq(playerGuid[4]);
-    data << uint8(item->GetBagSlot());                      // bag slot
+    data.WriteGuidBytes(PlayerGUID, 7);
+    data.WriteGuidBytes(ItemGUID, 5);
+    data.WriteGuidBytes(PlayerGUID, 4);
     data << uint32(itemSlot);                               // item slot, but when added to stack: 0xFFFFFFFF
-    data.WriteByteSeq(playerGuid[3]);
-    data.WriteByteSeq(playerGuid[6]);
+    data << uint8(item->GetBagSlot());                      // bag slot
+    data.WriteGuidBytes(PlayerGUID, 3, 6);
     data << uint32(0);                                      // battle pet level
-    data.WriteByteSeq(itemGuid[3]);
-    data.WriteByteSeq(itemGuid[4]);
+    data.WriteGuidBytes(ItemGUID, 3, 4);
 
     if (broadcast && GetGroup())
         GetGroup()->BroadcastPacket(&data, true);
@@ -15580,7 +15562,8 @@ Quest const* Player::GetNextQuest(uint64 guid, Quest const* quest)
     switch (GUID_HIPART(guid))
     {
         case HIGHGUID_PLAYER:
-            ASSERT(quest->HasFlag(QUEST_FLAGS_AUTO_SUBMIT));
+            //QUEST_FLAGS_AUTO_SUBMIT
+            ASSERT(quest->HasFlag(QUEST_FLAGS_PLAYER_CAST_ACCEPT));
             return sObjectMgr->GetQuestTemplate(nextQuestID);
         case HIGHGUID_UNIT:
         case HIGHGUID_PET:
@@ -15819,6 +15802,17 @@ bool Player::CanRewardQuest(Quest const* quest, uint32 reward, bool msg)
     if (!CanRewardQuest(quest, msg))
         return false;
 
+    if (quest->GetRewardPackageItemId() > 0)
+    {
+        ItemPosCountVec dest;
+        InventoryResult res = CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, reward, 1);
+        if (res != EQUIP_ERR_OK)
+        {
+            SendEquipError(res, NULL, NULL, reward);
+            return false;
+        }
+    }
+
     if (quest->GetRewChoiceItemsCount() > 0)
     {
         if (!quest->IsRewChoiceItemValid(reward))
@@ -15921,6 +15915,8 @@ void Player::AddQuest(Quest const* quest, Object* questGiver)
     StartTimedAchievement(ACHIEVEMENT_TIMED_TYPE_QUEST, questId);
 
     UpdateForQuestWorldObjects();
+    UpdatePhasing();
+
     if (questGiver) // script managment for every quest
     {
         switch (questGiver->GetTypeId())
@@ -15956,7 +15952,7 @@ void Player::CompleteQuest(uint32 quest_id)
 
         if (Quest const* qInfo = sObjectMgr->GetQuestTemplate(quest_id))
         {
-            if (qInfo->HasFlag(QUEST_FLAGS_TRACKING))
+            if (qInfo->HasFlag(QUEST_FLAGS_TRACKING_EVENT))
                 RewardQuest(qInfo, 0, this, false);
             else
                 SendQuestComplete(qInfo);
@@ -16019,6 +16015,16 @@ void Player::RewardQuest(Quest const* quest, uint32 reward, Object* questGiver, 
     }
 
     RemoveTimedQuest(quest_id);
+
+    if (quest->GetRewardPackageItemId() > 0)
+    {
+        ItemPosCountVec dest;
+        if (CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, reward, 1) == EQUIP_ERR_OK)
+        {
+            Item* item = StoreNewItem(dest, reward, true, Item::GenerateItemRandomPropertyId(reward));
+            SendNewItem(item, 1, true, false);
+        }
+    }
 
     if (quest->GetRewChoiceItemsCount() > 0)
     {
@@ -16123,11 +16129,6 @@ void Player::RewardQuest(Quest const* quest, uint32 reward, Object* questGiver, 
     RemoveActiveQuest(quest_id);
     m_RewardedQuests.insert(quest_id);
     m_RewardedQuestsSave[quest_id] = true;
-
-    PhaseUpdateData phaseUpdateData;
-    phaseUpdateData.AddQuestUpdate(quest_id);
-    phaseMgr.NotifyConditionChanged(phaseUpdateData);
-
     // StoreNewItem, mail reward, etc. save data directly to the database
     // to prevent exploitable data desynchronisation we save the quest status to the database too
     // (to prevent rewarding this quest another time while rewards were already given out)
@@ -16742,7 +16743,7 @@ QuestStatus Player::GetQuestStatus(uint32 quest_id) const
 bool Player::CanShareQuest(uint32 quest_id) const
 {
     Quest const* qInfo = sObjectMgr->GetQuestTemplate(quest_id);
-    if (qInfo && qInfo->HasFlag(QUEST_FLAGS_SHARABLE))
+    if (qInfo && qInfo->HasFlag(QUEST_FLAGS_PUSHABLE))
     {
         QuestStatusMap::const_iterator itr = m_QuestStatus.find(quest_id);
         if (itr != m_QuestStatus.end())
@@ -16758,11 +16759,6 @@ void Player::SetQuestStatus(uint32 quest_id, QuestStatus status)
         m_QuestStatus[quest_id].Status = status;
         m_QuestStatusSave[quest_id] = true;
     }
-
-    PhaseUpdateData phaseUpdateData;
-    phaseUpdateData.AddQuestUpdate(quest_id);
-
-    phaseMgr.NotifyConditionChanged(phaseUpdateData);
 
     uint32 zone = 0, area = 0;
 
@@ -16789,6 +16785,7 @@ void Player::SetQuestStatus(uint32 quest_id, QuestStatus status)
     }
 
     UpdateForQuestWorldObjects();
+    UpdatePhasing();
 }
 
 void Player::RemoveActiveQuest(uint32 quest_id)
@@ -16808,11 +16805,6 @@ void Player::RemoveActiveQuest(uint32 quest_id)
 
         m_QuestStatus.erase(itr);
         m_QuestStatusSave[quest_id] = false;
-
-        PhaseUpdateData phaseUpdateData;
-        phaseUpdateData.AddQuestUpdate(quest_id);
-
-        phaseMgr.NotifyConditionChanged(phaseUpdateData);
         return;
     }
 }
@@ -16824,11 +16816,6 @@ void Player::RemoveRewardedQuest(uint32 quest_id)
     {
         m_RewardedQuests.erase(rewItr);
         m_RewardedQuestsSave[quest_id] = false;
-
-        PhaseUpdateData phaseUpdateData;
-        phaseUpdateData.AddQuestUpdate(quest_id);
-
-        phaseMgr.NotifyConditionChanged(phaseUpdateData);
     }
 }
 
@@ -17924,14 +17911,8 @@ bool Player::LoadFromDB(uint32 guid, SQLQueryHolder *holder)
     uint32 mapId = fields[15].GetUInt16();
     uint32 instanceId = fields[52].GetUInt32();
 
-    uint32 dungeonDiff = fields[39].GetUInt8() & 0x0F;
-    if (dungeonDiff >= MAX_DUNGEON_DIFFICULTY)
-        dungeonDiff = DUNGEON_DIFFICULTY_NORMAL;
-    uint32 raidDiff = (fields[39].GetUInt8() >> 4) & 0x0F;
-    if (raidDiff >= MAX_RAID_DIFFICULTY)
-        raidDiff = RAID_DIFFICULTY_10MAN_NORMAL;
-    SetDungeonDifficulty(Difficulty(dungeonDiff));          // may be changed in _LoadGroup
-    SetRaidDifficulty(Difficulty(raidDiff));                // may be changed in _LoadGroup
+    SetDungeonDifficulty(CheckLoadedDungeonDifficultyID(DifficultyID(fields[39].GetUInt8())));
+    SetRaidDifficulty(CheckLoadedRaidDifficultyID(DifficultyID(fields[61].GetUInt8())));
 
     std::string taxi_nodes = fields[38].GetString();
 
@@ -18117,7 +18098,7 @@ bool Player::LoadFromDB(uint32 guid, SQLQueryHolder *holder)
 
         // fix crash (because of if (Map* map = _FindMap(instanceId)) in MapInstanced::CreateInstance)
         if (instanceId)
-            if (InstanceSave* save = GetInstanceSave(mapId, mapEntry->IsRaid()))
+            if (InstanceSave* save = GetInstanceSave(mapId))
                 if (save->GetInstanceId() != instanceId)
                     instanceId = 0;
     }
@@ -18172,7 +18153,7 @@ bool Player::LoadFromDB(uint32 guid, SQLQueryHolder *holder)
     }
 
     SetMap(map);
-    StoreRaidMapDifficulty();
+    //StoreRaidMapDifficulty();
 
     // randomize first save time in range [CONFIG_INTERVAL_SAVE] around [CONFIG_INTERVAL_SAVE]
     // this must help in case next save after mass player load after server startup
@@ -19444,7 +19425,7 @@ void Player::_LoadGroup(PreparedQueryResult result)
 
 void Player::_LoadBoundInstances(PreparedQueryResult result)
 {
-    for (uint8 i = 0; i < MAX_DIFFICULTY; ++i)
+    for (uint8 i = 0; i < 15; ++i)
         m_boundInstances[i].clear();
 
     Group* group = GetGroup();
@@ -19471,19 +19452,19 @@ void Player::_LoadBoundInstances(PreparedQueryResult result)
             MapEntry const* mapEntry = sMapStore.LookupEntry(mapId);
             std::string mapname = mapEntry ? mapEntry->name : "Unknown";
 
-            if (!mapEntry || !mapEntry->IsDungeon())
+            if (!mapEntry || !mapEntry->IsInstance())
             {
                 SF_LOG_ERROR("entities.player", "_LoadBoundInstances: player %s(%d) has bind to not existed or not dungeon map %d (%s)", GetName().c_str(), GetGUIDLow(), mapId, mapname.c_str());
                 deleteInstance = true;
             }
-            else if (difficulty >= MAX_DIFFICULTY)
+            else if (difficulty >= 15)
             {
                 SF_LOG_ERROR("entities.player", "_LoadBoundInstances: player %s(%d) has bind to not existed difficulty %d instance for map %u (%s)", GetName().c_str(), GetGUIDLow(), difficulty, mapId, mapname.c_str());
                 deleteInstance = true;
             }
             else
             {
-                MapDifficulty const* mapDiff = GetMapDifficultyData(mapId, Difficulty(difficulty));
+                MapDifficulty const* mapDiff = GetMapDifficultyData(mapId, DifficultyID(difficulty));
                 if (!mapDiff)
                 {
                     SF_LOG_ERROR("entities.player", "_LoadBoundInstances: player %s(%d) has bind to not existed difficulty %d instance for map %u (%s)", GetName().c_str(), GetGUIDLow(), difficulty, mapId, mapname.c_str());
@@ -19509,14 +19490,14 @@ void Player::_LoadBoundInstances(PreparedQueryResult result)
             }
 
             // since non permanent binds are always solo bind, they can always be reset
-            if (InstanceSave* save = sInstanceSaveMgr->AddInstanceSave(mapId, instanceId, Difficulty(difficulty), resetTime, !perm, true))
+            if (InstanceSave* save = sInstanceSaveMgr->AddInstanceSave(mapId, instanceId, DifficultyID(difficulty), resetTime, !perm, true))
                BindToInstance(save, perm, true);
         }
         while (result->NextRow());
     }
 }
 
-InstancePlayerBind* Player::GetBoundInstance(uint32 mapid, Difficulty difficulty)
+InstancePlayerBind* Player::GetBoundInstance(uint32 mapid, DifficultyID difficulty)
 {
     // some instances only have one difficulty
     MapDifficulty const* mapDiff = GetDownscaledMapDifficultyData(mapid, difficulty);
@@ -19530,9 +19511,10 @@ InstancePlayerBind* Player::GetBoundInstance(uint32 mapid, Difficulty difficulty
         return NULL;
 }
 
-InstanceSave* Player::GetInstanceSave(uint32 mapid, bool raid)
+InstanceSave* Player::GetInstanceSave(uint32 mapid)
 {
-    InstancePlayerBind* pBind = GetBoundInstance(mapid, GetDifficulty(raid));
+    MapEntry const* mapEntry = sMapStore.LookupEntry(mapid);
+    InstancePlayerBind* pBind = GetBoundInstance(mapid, GetDifficulty(mapEntry));
     InstanceSave* pSave = pBind ? pBind->save : NULL;
     if (!pBind || !pBind->perm)
         if (Group* group = GetGroup())
@@ -19542,13 +19524,13 @@ InstanceSave* Player::GetInstanceSave(uint32 mapid, bool raid)
     return pSave;
 }
 
-void Player::UnbindInstance(uint32 mapid, Difficulty difficulty, bool unload)
+void Player::UnbindInstance(uint32 mapid, DifficultyID difficulty, bool unload)
 {
     BoundInstancesMap::iterator itr = m_boundInstances[difficulty].find(mapid);
     UnbindInstance(itr, difficulty, unload);
 }
 
-void Player::UnbindInstance(BoundInstancesMap::iterator &itr, Difficulty difficulty, bool unload)
+void Player::UnbindInstance(BoundInstancesMap::iterator &itr, DifficultyID difficulty, bool unload)
 {
     if (itr != m_boundInstances[difficulty].end())
     {
@@ -19631,8 +19613,9 @@ void Player::BindToInstance()
     if (!mapSave) //it seems sometimes mapSave is NULL, but I did not check why
         return;
 
-    WorldPacket data(SMSG_INSTANCE_SAVE_CREATED, 4);
-    data << uint32(0);
+    WorldPacket data(SMSG_INSTANCE_SAVE_CREATED, 1);
+    data.WriteBit(IsGameMaster()); // isGM?
+    data.FlushBits();
     GetSession()->SendPacket(&data);
     BindToInstance(mapSave, true);
 
@@ -19647,42 +19630,49 @@ void Player::SetPendingBind(uint32 instanceId, uint32 bindTimer)
 
 void Player::SendRaidInfo()
 {
-    uint32 counter = 0;
+    uint32 iLockPos = 0;
+    ByteBuffer iLockData;
+    time_t now = time(NULL);
 
     WorldPacket data(SMSG_RAID_INSTANCE_INFO, 4);
 
-    size_t p_counter = data.wpos();
-    data << uint32(counter);                                // placeholder
+    size_t writePos = data.bitwpos();
+    data.WriteBits(iLockPos, 20); // placeholder
 
-    time_t now = time(NULL);
-
-    for (uint8 i = 0; i < MAX_DIFFICULTY; ++i)
+    for (uint8 i = 0; i < 15; ++i)
     {
-        for (BoundInstancesMap::iterator itr = m_boundInstances[i].begin(); itr != m_boundInstances[i].end(); ++itr)
+        Player::BoundInstancesMap boundInstances = GetBoundInstances(DifficultyID(i));
+        for (BoundInstancesMap::iterator itr = boundInstances.begin(); itr != boundInstances.end(); ++itr)
         {
             if (itr->second.perm)
             {
                 InstanceSave* save = itr->second.save;
-                bool isHeroic = save->GetDifficulty() == RAID_DIFFICULTY_10MAN_HEROIC || save->GetDifficulty() == RAID_DIFFICULTY_25MAN_HEROIC;
+                ObjectGuid InstanceGuid = save->GetInstanceId();
                 uint32 completedEncounters = 0;
                 if (Map* map = sMapMgr->FindMap(save->GetMapId(), save->GetInstanceId()))
                     if (InstanceScript* instanceScript = ((InstanceMap*)map)->GetInstanceScript())
                         completedEncounters = instanceScript->GetCompletedEncounterMask();
 
-                data << uint32(save->GetMapId());           // map id
-                data << uint32(save->GetDifficulty());      // difficulty
-                data << uint32(isHeroic);                   // heroic
-                data << uint64(save->GetInstanceId());      // instance id
-                data << uint8(1);                           // expired = 0
-                data << uint8(0);                           // extended = 1
-                data << uint32(save->GetResetTime() - now); // reset time
-                data << uint32(completedEncounters);        // completed encounters mask
-                ++counter;
+                data.WriteGuidMask(InstanceGuid, 1, 2, 6);
+                data.WriteBit(0);                           // extended = 1
+                data.WriteGuidMask(InstanceGuid, 5, 4);
+                data.WriteBit(1);                           // expired = 0
+                data.WriteGuidMask(InstanceGuid, 7, 3);
+                
+                iLockData.WriteGuidBytes(InstanceGuid, 7, 6, 4, 2, 0);
+                iLockData << uint32(save->GetResetTime() - now); // reset time
+                iLockData << uint32(completedEncounters);        // completed encounters mask
+                iLockData.WriteGuidBytes(InstanceGuid, 1);
+                iLockData << uint32(save->GetMapId());           // map id
+                iLockData << uint32(save->GetDifficulty());      // difficulty
+                iLockData.WriteGuidBytes(InstanceGuid, 3, 5);
+                ++iLockPos;
             }
         }
     }
-
-    data.put<uint32>(p_counter, counter);
+    data.FlushBits();
+    data.PutBits(writePos, iLockPos, 20);
+    data.append(iLockData);
     GetSession()->SendPacket(&data);
 }
 
@@ -19694,7 +19684,7 @@ void Player::SendSavedInstances()
     bool hasBeenSaved = false;
     WorldPacket data;
 
-    for (uint8 i = 0; i < MAX_DIFFICULTY; ++i)
+    for (uint8 i = 0; i < 15; ++i)
     {
         for (BoundInstancesMap::iterator itr = m_boundInstances[i].begin(); itr != m_boundInstances[i].end(); ++itr)
         {
@@ -19714,7 +19704,7 @@ void Player::SendSavedInstances()
     if (!hasBeenSaved)
         return;
 
-    for (uint8 i = 0; i < MAX_DIFFICULTY; ++i)
+    for (uint8 i = 0; i < 15; ++i)
     {
         for (BoundInstancesMap::iterator itr = m_boundInstances[i].begin(); itr != m_boundInstances[i].end(); ++itr)
         {
@@ -19734,7 +19724,7 @@ void Player::ConvertInstancesToGroup(Player* player, Group* group, bool switchLe
     // copy all binds to the group, when changing leader it's assumed the character
     // will not have any solo binds
 
-    for (uint8 i = 0; i < MAX_DIFFICULTY; ++i)
+    for (uint8 i = 0; i < 15; ++i)
     {
         for (BoundInstancesMap::iterator itr = player->m_boundInstances[i].begin(); itr != player->m_boundInstances[i].end();)
         {
@@ -19745,7 +19735,7 @@ void Player::ConvertInstancesToGroup(Player* player, Group* group, bool switchLe
             if (switchLeader && !itr->second.perm)
             {
                 // increments itr in call
-                player->UnbindInstance(itr, Difficulty(i), false);
+                player->UnbindInstance(itr, DifficultyID(i), false);
             }
             else
                 ++itr;
@@ -19784,7 +19774,7 @@ bool Player::Satisfy(AccessRequirement const* ar, uint32 target_map, bool report
 
         if (DisableMgr::IsDisabledFor(DISABLE_TYPE_MAP, target_map, this))
         {
-            GetSession()->SendAreaTriggerMessage("%s", GetSession()->GetSkyFireString(LANG_INSTANCE_CLOSED));
+            GetSession()->SendNotification(LANG_INSTANCE_CLOSED);
             return false;
         }
 
@@ -19804,7 +19794,7 @@ bool Player::Satisfy(AccessRequirement const* ar, uint32 target_map, bool report
             if (!leader || !leader->HasAchieved(ar->achievement))
                 missingAchievement = ar->achievement;
 
-        Difficulty target_difficulty = GetDifficulty(mapEntry->IsRaid());
+        DifficultyID target_difficulty = GetDifficulty(mapEntry);
         MapDifficulty const* mapDiff = GetDownscaledMapDifficultyData(target_map, target_difficulty);
         if (LevelMin || LevelMax || missingItem || missingQuest || missingAchievement)
         {
@@ -19813,11 +19803,14 @@ bool Player::Satisfy(AccessRequirement const* ar, uint32 target_map, bool report
                 if (missingQuest && !ar->questFailedText.empty())
                     ChatHandler(GetSession()).PSendSysMessage("%s", ar->questFailedText.c_str());
                 else if (mapDiff->hasErrorMessage) // if (missingAchievement) covered by this case
+                {
                     SendTransferAborted(target_map, TRANSFER_ABORT_DIFFICULTY, target_difficulty);
+                    GetSession()->SendNotification("%s", mapDiff->ErrorMessage.c_str());
+                }
                 else if (missingItem)
-                    GetSession()->SendAreaTriggerMessage(GetSession()->GetSkyFireString(LANG_LEVEL_MINREQUIRED_AND_ITEM), LevelMin, sObjectMgr->GetItemTemplate(missingItem)->Name1.c_str());
+                    GetSession()->SendNotification(LANG_LEVEL_MINREQUIRED_AND_ITEM, LevelMin, sObjectMgr->GetItemTemplate(missingItem)->Name1.c_str());
                 else if (LevelMin)
-                    GetSession()->SendAreaTriggerMessage(GetSession()->GetSkyFireString(LANG_LEVEL_MINREQUIRED), LevelMin);
+                    GetSession()->SendNotification(LANG_LEVEL_MINREQUIRED, LevelMin);
             }
             return false;
         }
@@ -19830,7 +19823,7 @@ bool Player::CheckInstanceLoginValid()
     if (!FindMap())
         return false;
 
-    if (!GetMap()->IsDungeon() || IsGameMaster())
+    if (!GetMap()->IsInstance() || IsGameMaster())
         return true;
 
     if (GetMap()->IsRaid())
@@ -19967,7 +19960,8 @@ void Player::SaveToDB(bool create /*=false*/)
         stmt->setUInt32(index++, GetUInt32Value(PLAYER_FIELD_PLAYER_FLAGS));
         stmt->setUInt16(index++, (uint16)GetMapId());
         stmt->setUInt32(index++, (uint32)GetInstanceId());
-        stmt->setUInt8(index++, (uint8(GetDungeonDifficulty()) | uint8(GetRaidDifficulty()) << 4));
+        stmt->setUInt8(index++, uint8(GetDungeonDifficulty()));
+        stmt->setUInt8(index++, uint8(GetRaidDifficulty()));
         stmt->setFloat(index++, finiteAlways(GetPositionX()));
         stmt->setFloat(index++, finiteAlways(GetPositionY()));
         stmt->setFloat(index++, finiteAlways(GetPositionZ()));
@@ -20077,7 +20071,8 @@ void Player::SaveToDB(bool create /*=false*/)
         {
             stmt->setUInt16(index++, (uint16)GetMapId());
             stmt->setUInt32(index++, (uint32)GetInstanceId());
-            stmt->setUInt8(index++, (uint8(GetDungeonDifficulty()) | uint8(GetRaidDifficulty()) << 4));
+            stmt->setUInt8(index++, uint8(GetDungeonDifficulty()));
+            stmt->setUInt8(index++, uint8(GetRaidDifficulty()));
             stmt->setFloat(index++, finiteAlways(GetPositionX()));
             stmt->setFloat(index++, finiteAlways(GetPositionY()));
             stmt->setFloat(index++, finiteAlways(GetPositionZ()));
@@ -20087,7 +20082,8 @@ void Player::SaveToDB(bool create /*=false*/)
         {
             stmt->setUInt16(index++, (uint16)GetTeleportDest().GetMapId());
             stmt->setUInt32(index++, (uint32)0);
-            stmt->setUInt8(index++, (uint8(GetDungeonDifficulty()) | uint8(GetRaidDifficulty()) << 4));
+            stmt->setUInt8(index++, uint8(GetDungeonDifficulty()));
+            stmt->setUInt8(index++, uint8(GetRaidDifficulty())); 
             stmt->setFloat(index++, finiteAlways(GetTeleportDest().GetPositionX()));
             stmt->setFloat(index++, finiteAlways(GetTeleportDest().GetPositionY()));
             stmt->setFloat(index++, finiteAlways(GetTeleportDest().GetPositionZ()));
@@ -21142,7 +21138,7 @@ void Player::SendExplorationExperience(uint32 Area, uint32 Experience)
     GetSession()->SendPacket(&data);
 }
 
-void Player::SendDungeonDifficulty(bool IsInGroup)
+void Player::SendDungeonDifficulty(/*bool IsInGroup*/)
 {
     WorldPacket data(SMSG_SET_DUNGEON_DIFFICULTY, 4);
     data << uint32(GetDungeonDifficulty());
@@ -21151,7 +21147,7 @@ void Player::SendDungeonDifficulty(bool IsInGroup)
 
 void Player::SendRaidDifficulty(bool IsInGroup, int32 forcedDifficulty)
 {
-    WorldPacket data(MSG_SET_RAID_DIFFICULTY, 4);
+    WorldPacket data(SMSG_SET_RAID_DIFFICULTY, 4);
     data << uint32(forcedDifficulty == -1 ? GetRaidDifficulty() : forcedDifficulty);
     GetSession()->SendPacket(&data);
 }
@@ -21168,7 +21164,9 @@ void Player::ResetInstances(uint8 method, bool isRaid)
     // method can be INSTANCE_RESET_ALL, INSTANCE_RESET_CHANGE_DIFFICULTY, INSTANCE_RESET_GROUP_JOIN
 
     // we assume that when the difficulty changes, all instances that can be reset will be
-    Difficulty diff = GetDifficulty(isRaid);
+    DifficultyID diff = GetDungeonDifficulty();
+    if (isRaid)
+        diff = GetRaidDifficulty();
 
     for (BoundInstancesMap::iterator itr = m_boundInstances[diff].begin(); itr != m_boundInstances[diff].end();)
     {
@@ -21183,7 +21181,7 @@ void Player::ResetInstances(uint8 method, bool isRaid)
         if (method == INSTANCE_RESET_ALL)
         {
             // the "reset all instances" method can only reset normal maps
-            if (entry->map_type == MAP_RAID || diff == DUNGEON_DIFFICULTY_HEROIC)
+            if (entry->map_type == MAP_RAID || diff == DIFFICULTY_HEROIC)
             {
                 ++itr;
                 continue;
@@ -21192,7 +21190,7 @@ void Player::ResetInstances(uint8 method, bool isRaid)
 
         // if the map is loaded, reset it
         Map* map = sMapMgr->FindMap(p->GetMapId(), p->GetInstanceId());
-        if (map && map->IsDungeon())
+        if (map && map->IsInstance())
             if (!((InstanceMap*)map)->Reset(method))
             {
                 ++itr;
@@ -21586,41 +21584,44 @@ void Player::PetSpellInitialize()
     data.FlushBits();
 
     // action bar loop
-    charmInfo->BuildActionBar(&data);
-
-    time_t curTime = time(NULL);
-
-    for (CreatureSpellCooldowns::const_iterator itr = pet->m_CreatureSpellCooldowns.begin(); itr != pet->m_CreatureSpellCooldowns.end(); ++itr)
-    {
-        SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(itr->first);
-        if (!spellInfo)
+    if (getLevel() >= sWorld->getIntConfig(CONFIG_START_PETBAR_LEVEL))
         {
-            data << uint32(0);
-            data << uint32(0);
-            data << uint16(0);
-            data << uint32(0);
-            continue;
-        }
+        charmInfo->BuildActionBar(&data);
 
-        time_t cooldown = (itr->second > curTime) ? (itr->second - curTime) * IN_MILLISECONDS : 0;
+        time_t curTime = time(NULL);
 
-        CreatureSpellCooldowns::const_iterator categoryitr = pet->m_CreatureCategoryCooldowns.find(spellInfo->GetCategory());
-        if (categoryitr != pet->m_CreatureCategoryCooldowns.end())
+        for (CreatureSpellCooldowns::const_iterator itr = pet->m_CreatureSpellCooldowns.begin(); itr != pet->m_CreatureSpellCooldowns.end(); ++itr)
         {
-            time_t categoryCooldown = (categoryitr->second > curTime) ? (categoryitr->second - curTime) * IN_MILLISECONDS : 0;
-            data << uint32(categoryCooldown);           // category cooldown
-            data << uint32(itr->first);                 // spell ID
-            data << uint16(spellInfo->GetCategory());   // spell category
-            data << uint32(cooldown);                   // spell cooldown
+            SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(itr->first);
+            if (!spellInfo)
+            {
+                data << uint32(0);
+                data << uint32(0);
+                data << uint16(0);
+                data << uint32(0);
+                continue;
+            }
+
+            time_t cooldown = (itr->second > curTime) ? (itr->second - curTime) * IN_MILLISECONDS : 0;
+
+            CreatureSpellCooldowns::const_iterator categoryitr = pet->m_CreatureCategoryCooldowns.find(spellInfo->GetCategory());
+            if (categoryitr != pet->m_CreatureCategoryCooldowns.end())
+            {
+                time_t categoryCooldown = (categoryitr->second > curTime) ? (categoryitr->second - curTime) * IN_MILLISECONDS : 0;
+                data << uint32(categoryCooldown);           // category cooldown
+                data << uint32(itr->first);                 // spell ID
+                data << uint16(spellInfo->GetCategory());   // spell category
+                data << uint32(cooldown);                   // spell cooldown
+            }
+            else
+            {
+                data << uint32(0);
+                data << uint32(itr->first);                 // spell ID
+                data << uint16(0);
+                data << uint32(cooldown);
+            }
+            ++cooldownCount;
         }
-        else
-        {
-            data << uint32(0);
-            data << uint32(itr->first);                 // spell ID
-            data << uint16(0);
-            data << uint32(cooldown);
-        }
-        ++cooldownCount;
     }
 
     data.PutBits(cooldownCountPos, cooldownCount, 20);
@@ -23628,7 +23629,7 @@ void Player::SetBattlegroundEntryPoint()
             m_bgData.mountSpell = 0;
 
         // If map is dungeon find linked graveyard
-        if (GetMap()->IsDungeon())
+        if (GetMap()->IsInstance())
         {
             if (const WorldSafeLocsEntry* entry = sObjectMgr->GetClosestGraveYard(GetPositionX(), GetPositionY(), GetPositionZ(), GetMapId(), GetTeam()))
                 m_bgData.joinPos = WorldLocation(entry->map_id, entry->x, entry->y, entry->z, 0.0f);
@@ -24294,14 +24295,11 @@ void Player::SendInitialPacketsAfterAddToMap()
     // raid downscaling - send difficulty to player
     if (GetMap()->IsRaid())
     {
-        if (GetMap()->GetDifficulty() != GetRaidDifficulty())
-        {
-            StoreRaidMapDifficulty();
-            SendRaidDifficulty(GetGroup() != NULL, GetStoredRaidDifficulty());
-        }
+        DifficultyEntry const* difficulty = sDifficultyStore.LookupEntry(GetMap()->GetDifficulty());
+        SendRaidDifficulty(GetMap()->GetDifficulty());
     }
-    else if (GetRaidDifficulty() != GetStoredRaidDifficulty())
-        SendRaidDifficulty(GetGroup() != NULL);
+    else if (GetMap()->IsNonRaidInstance())
+        SendDungeonDifficulty();
 
     m_battlePetMgr->SendBattlePetJournal();
     m_battlePetMgr->SendBattlePetJournalLock();
@@ -24331,7 +24329,7 @@ void Player::SendTransferAborted(uint32 mapid, TransferAbortReason reason, uint8
     GetSession()->SendPacket(&data);
 }
 
-void Player::SendInstanceResetWarning(uint32 mapid, Difficulty difficulty, uint32 time)
+void Player::SendInstanceResetWarning(uint32 mapid, DifficultyID difficulty, uint32 time)
 {
     // type of warning, based on the time remaining until reset
     uint32 type;
@@ -26373,6 +26371,38 @@ void Player::StoreLootItem(uint8 lootSlot, Loot* loot)
     }
     else
         SendEquipError(msg, NULL, NULL, item->itemid);
+}
+
+DifficultyID Player::GetDifficulty(MapEntry const* mapEntry) const
+{
+    if (!mapEntry->IsRaid())
+        return m_dungeonDifficulty;
+
+    return m_raidDifficulty;
+}
+
+DifficultyID Player::CheckLoadedDungeonDifficultyID(DifficultyID difficulty)
+{
+    DifficultyEntry const* difficultyEntry = sDifficultyStore.LookupEntry(difficulty);
+    if (!difficultyEntry)
+        return DIFFICULTY_NORMAL;
+
+    if (difficultyEntry->maptype != MAP_DUNGEON)
+        return DIFFICULTY_NORMAL;
+
+    return difficulty;
+}
+
+DifficultyID Player::CheckLoadedRaidDifficultyID(DifficultyID difficulty)
+{
+    DifficultyEntry const* difficultyEntry = sDifficultyStore.LookupEntry(difficulty);
+    if (!difficultyEntry)
+        return DIFFICULTY_10MAN_NORMAL;
+
+    if (difficultyEntry->maptype != MAP_RAID)
+        return DIFFICULTY_10MAN_NORMAL;
+
+    return difficulty;
 }
 
 uint32 Player::CalculateTalentsPoints() const
@@ -28457,6 +28487,8 @@ Pet* Player::SummonPet(uint32 entry, float x, float y, float z, float ang, PetTy
         delete pet;
         return NULL;
     }
+    for (auto itr : GetPhases())
+        pet->SetPhased(itr, false, true);
 
     pet->SetCreatorGUID(GetGUID());
     pet->SetUInt32Value(UNIT_FIELD_FACTION_TEMPLATE, getFaction());
@@ -28881,7 +28913,7 @@ void Player::ReadMovementInfo(WorldPacket& data, MovementInfo* mi, Movement::Ext
 
     #undef REMOVE_VIOLATING_FLAGS
 }
-
+/*
 void Player::SaveResearchDigsiteToDB(ResearchDigsite* digsite)
 {
     // DELETE FROM character_research_digsites WHERE guid = ? AND digsiteId = ?
@@ -29389,7 +29421,7 @@ void Player::UpdateResearchProjects()
         SetUInt16Value(PLAYER_FIELD_RESEARCHING, i % 2, projectIds [i]);
     }
 }
-
+*/
 void Player::SendDeclineGuildInvitation(std::string declinerName, bool autoDecline /*= false*/)
 {
     WorldPacket data(SMSG_GUILD_DECLINE, 5 + declinerName.length());
@@ -29400,4 +29432,15 @@ void Player::SendDeclineGuildInvitation(std::string declinerName, bool autoDecli
     data.WriteString(declinerName);
     data << (int32)0;
     GetSession()->SendPacket(&data);
+}
+
+void Player::UpdatePhasing()
+{
+    std::set<uint32> phaseIds;
+    std::set<uint32> terrainswaps;
+    std::set<uint32> worldAreaSwaps;
+
+    RebuildTerrainSwaps(); // to set default map swaps
+
+    GetSession()->SendSetPhaseShift(GetPhases(), GetTerrainSwaps(), GetWorldMapSwaps());
 }

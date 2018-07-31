@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -99,10 +99,12 @@ class PreparedStatement
     protected:
         void BindParameters();
 
-    protected:
         MySQLPreparedStatement* m_stmt;
         uint32 m_index;
         std::vector<PreparedStatementData> statement_data;    //- Buffer of parameters, not tied to MySQL in any way yet
+    private:
+        PreparedStatement(PreparedStatement const& right) = delete;
+        PreparedStatement & operator=(PreparedStatement const& right) = delete;
 };
 
 //- Class of which the instances are unique per MySQLConnection
@@ -147,6 +149,8 @@ class MySQLPreparedStatement
         uint32 m_paramCount;
         std::vector<bool> m_paramsSet;
         MYSQL_BIND* m_bind;
+        MySQLPreparedStatement(MySQLPreparedStatement const& right) = delete;
+        MySQLPreparedStatement & operator=(MySQLPreparedStatement const& right) = delete;
 };
 
 typedef ACE_Future<PreparedQueryResult> PreparedQueryResultFuture;

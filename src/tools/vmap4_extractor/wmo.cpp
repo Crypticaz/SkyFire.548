@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2016 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -512,7 +512,7 @@ WMOInstance::WMOInstance(MPQFile& f, char const* WmoInstName, uint32 mapID, uint
     //-----------add_in _dir_file----------------
 
     char tempname[512];
-    sprintf(tempname, "%s/%s", szWorkDirWmo, WmoInstName);
+    snprintf(tempname, sizeof(tempname), "%s/%s", szWorkDirWmo, WmoInstName);
     FILE *input;
     input = fopen(tempname, "r+b");
 

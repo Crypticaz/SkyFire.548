@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -42,9 +42,9 @@
 
 char* command_finder(const char* text, int state)
 {
-    static int idx, len;
+    static size_t idx, len;
     const char* ret;
-    ChatCommand* cmd = ChatHandler::getCommandTable();
+    std::vector<ChatCommand> const& cmd = ChatHandler::getCommandTable();
 
     if (!state)
     {
@@ -52,20 +52,19 @@ char* command_finder(const char* text, int state)
         len = strlen(text);
     }
 
-    while ((ret = cmd[idx].Name))
+    while (idx < cmd.size())
     {
+        ret = cmd[idx].Name;
         if (!cmd[idx].AllowConsole)
         {
-            idx++;
+            ++idx;
             continue;
         }
 
-        idx++;
+        ++idx;
         //printf("Checking %s \n", cmd[idx].Name);
         if (strncmp(ret, text, len) == 0)
             return strdup(ret);
-        if (cmd[idx].Name == NULL)
-            break;
     }
 
     return ((char*)NULL);

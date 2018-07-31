@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -183,8 +183,8 @@ class Channel
         void Invite(Player const* player, std::string const& newp);
         void Voice(uint64 guid1, uint64 guid2);
         void DeVoice(uint64 guid1, uint64 guid2);
-        void JoinNotify(uint64 guid);                                           // invisible notify
-        void LeaveNotify(uint64 guid);                                          // invisible notify
+        void JoinNotify(ObjectGuid UserGUID, uint32 ChannelID, uint8 ChannelFlags, uint8 UserFlags, const std::string ChannelName); // invisible notify                                          // invisible notify
+        void LeaveNotify(ObjectGuid UserGUID, uint32 ChannelID, uint8 ChannelFlags, const std::string ChannelName);                 // invisible notify  
         void SetOwnership(bool ownership) { _ownership = ownership; };
         static void CleanOldChannelsInDB();
 

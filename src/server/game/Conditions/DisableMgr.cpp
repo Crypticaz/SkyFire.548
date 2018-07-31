@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -133,20 +133,20 @@ void LoadDisables()
                         if (flags)
                             isFlagInvalid = true;
                         break;
-                    case MAP_INSTANCE:
-                        if (flags & DUNGEON_STATUSFLAG_HEROIC && !GetMapDifficultyData(entry, DUNGEON_DIFFICULTY_HEROIC))
+                    case MAP_DUNGEON:
+                        if (flags & DUNGEON_STATUSFLAG_HEROIC && !GetMapDifficultyData(entry, DIFFICULTY_HEROIC))
                             flags -= DUNGEON_STATUSFLAG_HEROIC;
                         if (!flags)
                             isFlagInvalid = true;
                         break;
                     case MAP_RAID:
-                        if (flags & RAID_STATUSFLAG_10MAN_HEROIC && !GetMapDifficultyData(entry, RAID_DIFFICULTY_10MAN_HEROIC))
+                        if (flags & RAID_STATUSFLAG_10MAN_HEROIC && !GetMapDifficultyData(entry, DIFFICULTY_10MAN_HEROIC))
                             flags -= RAID_STATUSFLAG_10MAN_HEROIC;
-                        if (flags & RAID_STATUSFLAG_25MAN_HEROIC && !GetMapDifficultyData(entry, RAID_DIFFICULTY_25MAN_HEROIC))
+                        if (flags & RAID_STATUSFLAG_25MAN_HEROIC && !GetMapDifficultyData(entry, DIFFICULTY_25MAN_HEROIC))
                             flags -= RAID_STATUSFLAG_25MAN_HEROIC;
-                        if (flags & RAID_STATUSFLAG_10MAN_FLEX && !GetMapDifficultyData(entry, RAID_DIFFICULTY_10MAN_FLEX))
+                        if (flags & RAID_STATUSFLAG_10MAN_FLEX && !GetMapDifficultyData(entry, DIFFICULTY_FLEX))
                             flags -= RAID_STATUSFLAG_10MAN_FLEX;
-                        if (flags & RAID_STATUSFLAG_25MAN_LFR && !GetMapDifficultyData(entry, RAID_DIFFICULTY_25MAN_LFR))
+                        if (flags & RAID_STATUSFLAG_25MAN_LFR && !GetMapDifficultyData(entry, DIFFICULTY_25MAN_LFR))
                             flags -= RAID_STATUSFLAG_25MAN_LFR;
                         if (!flags)
                             isFlagInvalid = true;
@@ -206,7 +206,7 @@ void LoadDisables()
                         if (flags & VMAP_DISABLE_LIQUIDSTATUS)
                             SF_LOG_INFO("misc", "Liquid status disabled for world map %u.", entry);
                         break;
-                    case MAP_INSTANCE:
+                    case MAP_DUNGEON:
                         if (flags & VMAP_DISABLE_HEIGHT)
                             SF_LOG_INFO("misc", "Height disabled for instance map %u.", entry);
                         if (flags & VMAP_DISABLE_LOS)
@@ -248,7 +248,7 @@ void LoadDisables()
                     case MAP_COMMON:
                         SF_LOG_INFO("misc", "Pathfinding disabled for world map %u.", entry);
                         break;
-                    case MAP_INSTANCE:
+                    case MAP_DUNGEON:
                     case MAP_RAID:
                         SF_LOG_INFO("misc", "Pathfinding disabled for instance map %u.", entry);
                         break;
@@ -360,24 +360,28 @@ bool IsDisabledFor(DisableType type, uint32 entry, Unit const* unit, uint8 flags
             if (Player const* player = unit->ToPlayer())
             {
                 MapEntry const* mapEntry = sMapStore.LookupEntry(entry);
-                if (mapEntry->IsDungeon())
+                if (mapEntry->IsInstance())
                 {
                     uint8 disabledModes = itr->second.flags;
-                    Difficulty targetDifficulty = player->GetDifficulty(mapEntry->IsRaid());
+                    DifficultyID targetDifficulty = player->GetDifficulty(mapEntry);
                     GetDownscaledMapDifficultyData(entry, targetDifficulty);
                     switch (targetDifficulty)
                     {
-                        case DUNGEON_DIFFICULTY_NORMAL:
+                        case DIFFICULTY_NORMAL:
                             return disabledModes & DUNGEON_STATUSFLAG_NORMAL;
-                        case DUNGEON_DIFFICULTY_HEROIC:
+                        case DIFFICULTY_HEROIC:
                             return disabledModes & DUNGEON_STATUSFLAG_HEROIC;
-                        case RAID_DIFFICULTY_10MAN_HEROIC:
+                        case DIFFICULTY_10MAN_NORMAL:
+                            return disabledModes & RAID_STATUSFLAG_10MAN_NORMAL;
+                        case DIFFICULTY_10MAN_HEROIC:
                             return disabledModes & RAID_STATUSFLAG_10MAN_HEROIC;
-                        case RAID_DIFFICULTY_25MAN_HEROIC:
+                        case DIFFICULTY_25MAN_NORMAL:
+                            return disabledModes & RAID_STATUSFLAG_25MAN_NORMAL;
+                        case DIFFICULTY_25MAN_HEROIC:
                             return disabledModes & RAID_STATUSFLAG_25MAN_HEROIC;
-                        case RAID_DIFFICULTY_10MAN_FLEX:
-                            return disabledModes & RAID_STATUSFLAG_10MAN_FLEX;
-                        case RAID_DIFFICULTY_25MAN_LFR:
+                        //case DIFFICULTY_10MAN_FLEX:
+                        //    return disabledModes & RAID_STATUSFLAG_10MAN_FLEX;
+                        case DIFFICULTY_25MAN_LFR:
                             return disabledModes & RAID_STATUSFLAG_25MAN_LFR;
                     }
                 }

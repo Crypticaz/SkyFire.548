@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -76,7 +76,7 @@ enum CreatureFlagsExtra
 struct CreatureTemplate
 {
     uint32  Entry;
-    uint32  DifficultyEntry[MAX_DIFFICULTY - 1];
+    uint32  DifficultyEntry[4 - 1];
     uint32  KillCredit[MAX_KILL_CREDIT];
     uint32  Modelid1;
     uint32  Modelid2;
@@ -171,6 +171,29 @@ struct CreatureTemplate
         // if can tame exotic then can tame any tameable
         return canTameExotic || !IsExotic();
     }
+
+    static int32 DiffToDiffIndex(uint32 difficulty)
+    {
+        switch (difficulty)
+        {
+        case DIFFICULTY_NONE:
+        case DIFFICULTY_NORMAL:
+        case DIFFICULTY_10MAN_NORMAL:
+        case DIFFICULTY_40MAN:
+            return -1;
+        case DIFFICULTY_HEROIC:
+        case DIFFICULTY_25MAN_NORMAL:
+            return 0;
+        case DIFFICULTY_10MAN_HEROIC:
+        case DIFFICULTY_CHALLENGE:
+            return 1;
+        case DIFFICULTY_25MAN_HEROIC:
+            return 2;
+        case DIFFICULTY_25MAN_LFR:
+        default:
+            return -1;
+        }
+    }
 };
 
 // Benchmarked: Faster than std::map (insert/find)
@@ -245,10 +268,15 @@ typedef UNORDERED_MAP<uint32, EquipmentInfoContainerInternal> EquipmentInfoConta
 // from `creature` table
 struct CreatureData
 {
-    CreatureData() : dbData(true) { }
+    CreatureData() : id(0), mapid(0), phaseid(0), phaseGroup(0), displayid(0), equipmentId(0),
+        posX(0.0f), posY(0.0f), posZ(0.0f), orientation(0.0f), spawntimesecs(0), spawndist(0.0f),
+        currentwaypoint(0), curhealth(0), curmana(0), movementType(0), spawnMask(0), npcflag(0),
+        unit_flags(0), dynamicflags(0), dbData(true) { }
+
     uint32 id;                                              // entry in creature_template
     uint16 mapid;
-    uint32 phaseMask;
+    uint32 phaseid;
+    uint32 phaseGroup;
     uint32 displayid;
     int8 equipmentId;
     float posX;
@@ -261,7 +289,7 @@ struct CreatureData
     uint32 curhealth;
     uint32 curmana;
     uint8 movementType;
-    uint8 spawnMask;
+    uint32 spawnMask;
     uint32 npcflag;
     uint32 unit_flags;                                      // enum UnitFlags mask values
     uint32 dynamicflags;
@@ -430,7 +458,7 @@ class Creature : public Unit, public GridObject<Creature>, public MapObject
 
         void DisappearAndDie();
 
-        bool Create(uint32 guidlow, Map* map, uint32 phaseMask, uint32 Entry, uint32 vehId, uint32 team, float x, float y, float z, float ang, const CreatureData* data = NULL);
+        bool Create(uint32 guidlow, Map* map, uint32 Entry, uint32 vehId, uint32 team, float x, float y, float z, float ang, const CreatureData* data = NULL);
         bool LoadCreaturesAddon(bool reload = false);
         void SelectLevel(const CreatureTemplate* cinfo);
         void LoadEquipment(int8 id = 1, bool force = false);
@@ -530,7 +558,7 @@ class Creature : public Unit, public GridObject<Creature>, public MapObject
         bool LoadCreatureFromDB(uint32 guid, Map* map, bool addToMap = true);
         void SaveToDB();
                                                             // overriden in Pet
-        virtual void SaveToDB(uint32 mapid, uint8 spawnMask, uint32 phaseMask);
+        virtual void SaveToDB(uint32 mapid, uint32 spawnMask);
         virtual void DeleteFromDB();                        // overriden in Pet
 
         Loot loot;

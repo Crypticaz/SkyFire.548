@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -225,6 +225,7 @@ enum WorldIntConfigs
     CONFIG_CHARACTER_CREATING_MIN_LEVEL_FOR_HEROIC_CHARACTER,
     CONFIG_SKIP_CINEMATICS,
     CONFIG_MAX_PLAYER_LEVEL,
+    CONFIG_START_PETBAR_LEVEL,
     CONFIG_MIN_DUALSPEC_LEVEL,
     CONFIG_START_PLAYER_LEVEL,
     CONFIG_START_HEROIC_PLAYER_LEVEL,
@@ -531,14 +532,12 @@ struct CliCommandHolder
     CommandFinished* m_commandFinished;
 
     CliCommandHolder(void* callbackArg, const char *command, Print* zprint, CommandFinished* commandFinished)
-        : m_callbackArg(callbackArg), m_print(zprint), m_commandFinished(commandFinished)
-    {
-        size_t len = strlen(command)+1;
-        m_command = new char[len];
-        memcpy(m_command, command, len);
-    }
+        : m_callbackArg(callbackArg), m_command(strdup(command)), m_print(zprint), m_commandFinished(commandFinished) { }
 
-    ~CliCommandHolder() { delete [] m_command; }
+    ~CliCommandHolder() { free(m_command); }
+private:
+    CliCommandHolder(CliCommandHolder const& right) = delete;
+    CliCommandHolder & operator=(CliCommandHolder const& right) = delete;
 };
 
 typedef UNORDERED_MAP<uint32, WorldSession*> SessionMap;
@@ -782,7 +781,6 @@ class World
         void   SetCleaningFlags(uint32 flags) { m_CleaningFlags = flags; }
         void   ResetEventSeasonalQuests(uint16 event_id);
 
-        void UpdatePhaseDefinitions();
         void ReloadRBAC();
 
     protected:

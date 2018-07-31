@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -119,7 +119,7 @@ std::string GetScriptCommandName(ScriptCommands command)
         default:
         {
             char sz[32];
-            sprintf(sz, "Unknown command: %d", command);
+            snprintf(sz, sizeof(sz), "Unknown command: %d", command);
             res = sz;
             break;
         }
@@ -130,7 +130,7 @@ std::string GetScriptCommandName(ScriptCommands command)
 std::string ScriptInfo::GetDebugInfo() const
 {
     char sz[256];
-    sprintf(sz, "%s ('%s' script id: %u)", GetScriptCommandName(command).c_str(), GetScriptsTableNameByType(type).c_str(), id);
+    snprintf(sz, sizeof(sz), "%s ('%s' script id: %u)", GetScriptCommandName(command).c_str(), GetScriptsTableNameByType(type).c_str(), id);
     return std::string(sz);
 }
 
@@ -430,7 +430,7 @@ void ObjectMgr::LoadCreatureTemplates()
     //                                           9       10      11       12           13           14        15     16      17        18        19         20         21
                                              "modelid4, name, subname, IconName, gossip_menu_id, minlevel, maxlevel, exp, exp_unk, faction_A, faction_H, npcflag, speed_walk, "
     //                                             22     23     24     25     26       27           28             29              30               31            32          33          34
-                                             "speed_run, scale, rank, mindmg, maxdmg, dmgschool, attackpower, dmg_multiplier, baseattacktime, rangeattacktime, unit_class, unit_flags, unit_flags2, "
+                                             "speed_run, scale, npc_rank, mindmg, maxdmg, dmgschool, attackpower, dmg_multiplier, baseattacktime, rangeattacktime, unit_class, unit_flags, unit_flags2, "
     //                                             35         36         37             38             39          40           41              42          43
                                              "dynamicflags, family, trainer_type, trainer_class, trainer_race, minrangedmg, maxrangedmg, rangedattackpower, type, "
     //                                            44           45        46         47            48          49          50           51           52           53         54
@@ -462,7 +462,7 @@ void ObjectMgr::LoadCreatureTemplates()
 
         creatureTemplate.Entry = entry;
 
-        for (uint8 i = 0; i < MAX_DIFFICULTY - 1; ++i)
+        for (uint8 i = 0; i < 3; ++i)
             creatureTemplate.DifficultyEntry[i] = fields[1 + i].GetUInt32();
 
         for (uint8 i = 0; i < MAX_KILL_CREDIT; ++i)
@@ -632,7 +632,7 @@ void ObjectMgr::CheckCreatureTemplate(CreatureTemplate const* cInfo)
         return;
 
     bool ok = true;                                     // bool to allow continue outside this loop
-    for (uint32 diff = 0; diff < MAX_DIFFICULTY - 1 && ok; ++diff)
+    for (uint32 diff = 0; diff < 3 && ok; ++diff)
     {
         if (!cInfo->DifficultyEntry[diff])
             continue;
@@ -647,7 +647,7 @@ void ObjectMgr::CheckCreatureTemplate(CreatureTemplate const* cInfo)
         }
 
         bool ok2 = true;
-        for (uint32 diff2 = 0; diff2 < MAX_DIFFICULTY - 1 && ok2; ++diff2)
+        for (uint32 diff2 = 0; diff2 < 3 && ok2; ++diff2)
         {
             ok2 = false;
             if (_difficultyEntries[diff2].find(cInfo->Entry) != _difficultyEntries[diff2].end())
@@ -831,6 +831,12 @@ void ObjectMgr::CheckCreatureTemplate(CreatureTemplate const* cInfo)
 
     if (cInfo->rangeattacktime == 0)
         const_cast<CreatureTemplate*>(cInfo)->rangeattacktime = BASE_ATTACK_TIME;
+
+    if (cInfo->GossipMenuId == 0 && (cInfo->npcflag & UNIT_NPC_FLAG_GOSSIP))
+        SF_LOG_ERROR("sql.sql", "Creature (Entry: %u) has [UNIT_NPC_FLAG_GOSSIP] set, but does have (gossip_menu_id: %u) set.", cInfo->Entry, cInfo->GossipMenuId);
+
+    if (cInfo->GossipMenuId > 0 && !(cInfo->npcflag & UNIT_NPC_FLAG_GOSSIP))
+        SF_LOG_ERROR("sql.sql", "Creature (Entry: %u) has (gossip_menu_id: %u) set, but does not have [UNIT_NPC_FLAG_GOSSIP] set.", cInfo->GossipMenuId, cInfo->Entry);
 
     if ((cInfo->npcflag & UNIT_NPC_FLAG_TRAINER) && cInfo->trainer_type >= MAX_TRAINER_TYPE)
         SF_LOG_ERROR("sql.sql", "Creature (Entry: %u) has wrong trainer type %u.", cInfo->Entry, cInfo->trainer_type);
@@ -1587,8 +1593,8 @@ void ObjectMgr::LoadCreatures()
 
     //                                               0              1   2    3        4             5           6           7           8            9              10
     QueryResult result = WorldDatabase.Query("SELECT creature.guid, id, map, modelid, equipment_id, position_x, position_y, position_z, orientation, spawntimesecs, spawndist, "
-    //   11               12         13       14            15         16         17          18          19                20                   21
-        "currentwaypoint, curhealth, curmana, MovementType, spawnMask, phaseMask, eventEntry, pool_entry, creature.npcflag, creature.unit_flags, creature.dynamicflags "
+        //   11               12         13       14            15            16                17                18          19             20                 21             22                    23
+        "currentwaypoint, curhealth, curmana, MovementType, spawnMask, creature.phaseid, creature.phasegroup, eventEntry, pool_entry, creature.npcflag, creature.unit_flags, creature.dynamicflags "
         "FROM creature "
         "LEFT OUTER JOIN game_event_creature ON creature.guid = game_event_creature.guid "
         "LEFT OUTER JOIN pool_creature ON creature.guid = pool_creature.guid");
@@ -1603,8 +1609,8 @@ void ObjectMgr::LoadCreatures()
     std::map<uint32, uint32> spawnMasks;
     for (uint32 i = 0; i < sMapStore.GetNumRows(); ++i)
         if (sMapStore.LookupEntry(i))
-            for (int k = 0; k < MAX_DIFFICULTY; ++k)
-                if (GetMapDifficultyData(i, Difficulty(k)))
+            for (int k = 0; k < 15; ++k)
+                if (GetMapDifficultyData(i, DifficultyID(k)))
                     spawnMasks[i] |= (1 << k);
 
     _creatureDataStore.rehash(result->GetRowCount());
@@ -1638,13 +1644,14 @@ void ObjectMgr::LoadCreatures()
         data.curhealth      = fields[12].GetUInt32();
         data.curmana        = fields[13].GetUInt32();
         data.movementType   = fields[14].GetUInt8();
-        data.spawnMask      = fields[15].GetUInt8();
-        data.phaseMask      = fields[16].GetUInt32();
-        int16 gameEvent     = fields[17].GetInt8();
-        uint32 PoolId       = fields[18].GetUInt32();
-        data.npcflag        = fields[19].GetUInt32();
-        data.unit_flags     = fields[20].GetUInt32();
-        data.dynamicflags   = fields[21].GetUInt32();
+        data.spawnMask      = fields[15].GetUInt32();
+        data.phaseid        = fields[16].GetUInt32();
+        data.phaseGroup     = fields[17].GetUInt32();
+        int16 gameEvent     = fields[18].GetInt8();
+        uint32 PoolId       = fields[19].GetUInt32();
+        data.npcflag        = fields[20].GetUInt32();
+        data.unit_flags     = fields[21].GetUInt32();
+        data.dynamicflags   = fields[22].GetUInt32();
 
         MapEntry const* mapEntry = sMapStore.LookupEntry(data.mapid);
         if (!mapEntry)
@@ -1657,7 +1664,7 @@ void ObjectMgr::LoadCreatures()
             SF_LOG_ERROR("sql.sql", "Table `creature` have creature (GUID: %u) that have wrong spawn mask %u including not supported difficulty modes for map (Id: %u) spawnMasks[data.mapid]: %u.", guid, data.spawnMask, data.mapid, spawnMasks[data.mapid]);
 
         bool ok = true;
-        for (uint32 diff = 0; diff < MAX_DIFFICULTY - 1 && ok; ++diff)
+        for (uint32 diff = 0; diff < 3 && ok; ++diff)
         {
             if (_difficultyEntries[diff].find(data.id) != _difficultyEntries[diff].end())
             {
@@ -1681,7 +1688,7 @@ void ObjectMgr::LoadCreatures()
 
         if (cInfo->flags_extra & CREATURE_FLAG_EXTRA_INSTANCE_BIND)
         {
-            if (!mapEntry || !mapEntry->IsDungeon())
+            if (!mapEntry || !mapEntry->IsInstance())
                 SF_LOG_ERROR("sql.sql", "Table `creature` have creature (GUID: %u Entry: %u) with `creature_template`.`flags_extra` including CREATURE_FLAG_EXTRA_INSTANCE_BIND but creature are not in instance.", guid, data.id);
         }
 
@@ -1707,10 +1714,10 @@ void ObjectMgr::LoadCreatures()
             }
         }
 
-        if (data.phaseMask == 0)
+        if (data.phaseGroup && data.phaseid)
         {
-            SF_LOG_ERROR("sql.sql", "Table `creature` have creature (GUID: %u Entry: %u) with `phaseMask`=0 (not visible for anyone), set to 1.", guid, data.id);
-            data.phaseMask = 1;
+            SF_LOG_ERROR("sql.sql", "Table `creature` have creature (GUID: %u Entry: %u) with both `phaseid` and `phasegroup` set, `phasegroup` set to 0", guid, data.id);
+            data.phaseGroup = 0;
         }
 
         // Add to grid if not managed by the game event or pool system
@@ -1726,8 +1733,8 @@ void ObjectMgr::LoadCreatures()
 
 void ObjectMgr::AddCreatureToGrid(uint32 guid, CreatureData const* data)
 {
-    uint8 mask = data->spawnMask;
-    for (uint8 i = 0; mask != 0; i++, mask >>= 1)
+    uint32 mask = data->spawnMask;
+    for (uint32 i = 0; mask != 0; i++, mask >>= 1)
     {
         if (mask & 1)
         {
@@ -1740,8 +1747,8 @@ void ObjectMgr::AddCreatureToGrid(uint32 guid, CreatureData const* data)
 
 void ObjectMgr::RemoveCreatureFromGrid(uint32 guid, CreatureData const* data)
 {
-    uint8 mask = data->spawnMask;
-    for (uint8 i = 0; mask != 0; i++, mask >>= 1)
+    uint32 mask = data->spawnMask;
+    for (uint32 i = 0; mask != 0; i++, mask >>= 1)
     {
         if (mask & 1)
         {
@@ -1778,7 +1785,8 @@ uint32 ObjectMgr::AddGOData(uint32 entry, uint32 mapId, float x, float y, float 
     data.animprogress   = 100;
     data.spawnMask      = 1;
     data.go_state       = GO_STATE_READY;
-    data.phaseMask      = PHASEMASK_NORMAL;
+    data.phaseid        = 169;
+    data.phaseGroup     = 0;
     data.artKit         = goinfo->type == GAMEOBJECT_TYPE_CAPTURE_POINT ? 21 : 0;
     data.dbData = false;
 
@@ -1861,7 +1869,8 @@ uint32 ObjectMgr::AddCreData(uint32 entry, uint32 /*team*/, uint32 mapId, float 
     data.curmana = stats->GenerateMana(cInfo);
     data.movementType = cInfo->MovementType;
     data.spawnMask = 1;
-    data.phaseMask = PHASEMASK_NORMAL;
+    data.phaseid = 169;
+    data.phaseGroup = 0;
     data.dbData = false;
     data.npcflag = cInfo->npcflag;
     data.unit_flags = cInfo->unit_flags;
@@ -1896,8 +1905,8 @@ void ObjectMgr::LoadGameobjects()
 
     //                                                0                1   2    3           4           5           6
     QueryResult result = WorldDatabase.Query("SELECT gameobject.guid, id, map, position_x, position_y, position_z, orientation, "
-    //   7          8          9          10         11             12            13     14         15         16          17
-        "rotation0, rotation1, rotation2, rotation3, spawntimesecs, animprogress, state, spawnMask, phaseMask, eventEntry, pool_entry "
+    //   7          8          9          10         11             12            13     14         15         16          17           18
+        "rotation0, rotation1, rotation2, rotation3, spawntimesecs, animprogress, state, spawnMask, phaseid, phasegroup, eventEntry, pool_entry "
         "FROM gameobject LEFT OUTER JOIN game_event_gameobject ON gameobject.guid = game_event_gameobject.guid "
         "LEFT OUTER JOIN pool_gameobject ON gameobject.guid = pool_gameobject.guid");
 
@@ -1911,8 +1920,8 @@ void ObjectMgr::LoadGameobjects()
     std::map<uint32, uint32> spawnMasks;
     for (uint32 i = 0; i < sMapStore.GetNumRows(); ++i)
         if (sMapStore.LookupEntry(i))
-            for (int k = 0; k < MAX_DIFFICULTY; ++k)
-                if (GetMapDifficultyData(i, Difficulty(k)))
+            for (int k = 0; k < 15; ++k)
+                if (GetMapDifficultyData(i, DifficultyID(k)))
                     spawnMasks[i] |= (1 << k);
 
     _gameObjectDataStore.rehash(result->GetRowCount());
@@ -1991,9 +2000,16 @@ void ObjectMgr::LoadGameobjects()
         if (data.spawnMask & ~spawnMasks[data.mapid])
             SF_LOG_ERROR("sql.sql", "Table `gameobject` has gameobject (GUID: %u Entry: %u) that has wrong spawn mask %u including not supported difficulty modes for map (Id: %u), skip", guid, data.id, data.spawnMask, data.mapid);
 
-        data.phaseMask      = fields[15].GetUInt32();
-        int16 gameEvent     = fields[16].GetInt8();
-        uint32 PoolId       = fields[17].GetUInt32();
+        data.phaseid = fields[15].GetUInt32();
+        data.phaseGroup = fields[16].GetUInt32();
+        int16 gameEvent     = fields[17].GetInt8();
+        uint32 PoolId       = fields[18].GetUInt32();
+
+        if (data.phaseGroup && data.phaseid)
+        {
+            SF_LOG_ERROR("sql.sql", "Table `gameobject` have gameobject (GUID: %u Entry: %u) with both `phaseid` and `phasegroup` set, `phasegroup` set to 0", guid, data.id);
+            data.phaseGroup = 0;
+        }
 
         if (data.rotation2 < -1.0f || data.rotation2 > 1.0f)
         {
@@ -2011,12 +2027,6 @@ void ObjectMgr::LoadGameobjects()
         {
             SF_LOG_ERROR("sql.sql", "Table `gameobject` has gameobject (GUID: %u Entry: %u) with invalid coordinates, skip", guid, data.id);
             continue;
-        }
-
-        if (data.phaseMask == 0)
-        {
-            SF_LOG_ERROR("sql.sql", "Table `gameobject` has gameobject (GUID: %u Entry: %u) with `phaseMask`=0 (not visible for anyone), set to 1.", guid, data.id);
-            data.phaseMask = 1;
         }
 
         if (gameEvent == 0 && PoolId == 0)                      // if not this is to be managed by GameEvent System or Pool system
@@ -3465,6 +3475,61 @@ void ObjectMgr::LoadPlayerInfo()
 
         SF_LOG_INFO("server.loading", ">> Loaded %u xp for level definitions in %u ms", count, GetMSTimeDiffToNow(oldMSTime));
     }
+
+    // Load playercreate cast spell
+    SF_LOG_INFO("server.loading", "Loading Player Create Spell Cast Data...");
+    {
+        uint32 oldMSTime = getMSTime();
+
+        QueryResult result = WorldDatabase.PQuery("SELECT racemask, classmask, Spell FROM playercreateinfo_spell_cast");
+
+        if (!result)
+            SF_LOG_ERROR("server.loading", ">> Loaded 0 player create cast spells. DB table `playercreateinfo_spell_cast` is empty.");
+        else
+        {
+            uint32 count = 0;
+
+            do
+            {
+                Field* fields = result->Fetch();
+                uint32 racemask = fields[0].GetUInt32();
+                uint32 classmask = fields[1].GetUInt32();
+                uint32 spellId = fields[2].GetUInt32();
+
+                if (racemask != 0 && !(racemask & RACEMASK_ALL_PLAYABLE))
+                {
+                    SF_LOG_ERROR("sql.sql", "Wrong race mask %u in `playercreateinfo_spell_cast` table, ignoring.", racemask);
+                    continue;
+                }
+
+                if (classmask != 0 && !(classmask & CLASSMASK_ALL_PLAYABLE))
+                {
+                    SF_LOG_ERROR("sql.sql", "Wrong class mask %u in `playercreateinfo_spell_cast` table, ignoring.", classmask);
+                    continue;
+                }
+
+                for (uint32 raceIndex = RACE_HUMAN; raceIndex < MAX_RACES; ++raceIndex)
+                {
+                    if (racemask == 0 || ((1 << (raceIndex - 1)) & racemask))
+                    {
+                        for (uint32 classIndex = CLASS_WARRIOR; classIndex < MAX_CLASSES; ++classIndex)
+                        {
+                            if (classmask == 0 || ((1 << (classIndex - 1)) & classmask))
+                            {
+                                if (PlayerInfo* info = _playerInfo[raceIndex][classIndex])
+                                {
+                                    info->spell_cast.push_back(spellId);
+                                    ++count;
+                                }
+                            }
+                        }
+                    }
+                }
+            } while (result->NextRow());
+
+            SF_LOG_INFO("server.loading", ">> Loaded %u player create spell casts in %u ms", count, GetMSTimeDiffToNow(oldMSTime));
+        }
+    }
 }
 
 void ObjectMgr::GetPlayerClassLevelInfo(uint32 class_, uint8 level, uint32& baseHP, uint32& baseMana) const
@@ -3687,14 +3752,14 @@ void ObjectMgr::LoadQuests()
             }
         }
 
-        if (qinfo->Flags & QUEST_FLAGS_TRACKING)
+        if (qinfo->Flags & QUEST_FLAGS_TRACKING_EVENT)
         {
             // at auto-reward can be rewarded only RewardChoiceItemId[0]
             for (int j = 1; j < QUEST_REWARD_CHOICES_COUNT; ++j )
             {
                 if (uint32 id = qinfo->RewardChoiceItemId[j])
                 {
-                    SF_LOG_ERROR("sql.sql", "Quest %u has `RewardChoiceItemId%d` = %u but item from `RewardChoiceItemId%d` can't be rewarded with quest flag QUEST_FLAGS_TRACKING.",
+                    SF_LOG_ERROR("sql.sql", "Quest %u has `RewardChoiceItemId%d` = %u but item from `RewardChoiceItemId%d` can't be rewarded with quest flag QUEST_FLAGS_TRACKING_EVENT.",
                         qinfo->GetQuestId(), j+1, id, j+1);
                     // no changes, quest ignore this data
                 }
@@ -4966,9 +5031,9 @@ void ObjectMgr::LoadInstanceEncounters()
 
         if (dungeonEncounter->difficulty == -1)
         {
-            for (uint32 i = 0; i < MAX_DIFFICULTY; ++i)
+            for (uint32 i = 0; i < 14; ++i)
             {
-                if (GetMapDifficultyData(dungeonEncounter->mapId, Difficulty(i)))
+                if (GetMapDifficultyData(dungeonEncounter->mapId, DifficultyID(i)))
                 {
                     DungeonEncounterList& encounters = _dungeonEncounterStore[MAKE_PAIR32(dungeonEncounter->mapId, i)];
                     encounters.push_back(new DungeonEncounter(dungeonEncounter, EncounterCreditType(creditType), creditEntry, lastEncounterDungeon));
@@ -5907,7 +5972,7 @@ AreaTriggerStruct const* ObjectMgr::GetGoBackTrigger(uint32 Map) const
     if (!mapEntry || mapEntry->entrance_map < 0)
         return NULL;
 
-    if (mapEntry->IsDungeon())
+    if (mapEntry->IsInstance())
     {
         const InstanceTemplate* iTemplate = sObjectMgr->GetInstanceTemplate(Map);
 
@@ -5998,7 +6063,7 @@ void ObjectMgr::SetHighestGuids()
     if (result)
         sGuildMgr->SetNextGuildId((*result)[0].GetUInt32()+1);
 
-    result = CharacterDatabase.Query("SELECT MAX(guid) FROM groups");
+    result = CharacterDatabase.Query("SELECT MAX(guid) FROM parties");
     if (result)
         sGroupMgr->SetGroupDbStoreSize((*result)[0].GetUInt32()+1);
 
@@ -8757,53 +8822,161 @@ void ObjectMgr::LoadFactionChangeTitles()
 
     SF_LOG_INFO("server.loading", ">> Loaded %u faction change title pairs in %u ms", count, GetMSTimeDiffToNow(oldMSTime));
 }
-
-void ObjectMgr::LoadPhaseDefinitions()
+void ObjectMgr::LoadTerrainSwapDefaults()
 {
-    _PhaseDefinitionStore.clear();
+    _terrainMapDefaultStore.clear();
 
     uint32 oldMSTime = getMSTime();
 
-    //                                                 0       1       2         3            4           5
-    QueryResult result = WorldDatabase.Query("SELECT zoneId, entry, phasemask, phaseId, terrainswapmap, flags FROM `phase_definitions` ORDER BY `entry` ASC");
+    //                                               0       1
+    QueryResult result = WorldDatabase.Query("SELECT MapId, TerrainSwapMap FROM `terrain_swap_defaults`");
 
     if (!result)
     {
-        SF_LOG_INFO("server.loading", ">> Loaded 0 phasing definitions. DB table `phase_definitions` is empty.");
+        SF_LOG_INFO("server.loading", ">> Loaded 0 terrain swap defaults. DB table `terrain_swap_defaults` is empty.");
         return;
     }
 
     uint32 count = 0;
-
     do
     {
         Field* fields = result->Fetch();
 
-        PhaseDefinition PhaseDefinition;
+        uint32 mapId = fields[0].GetUInt32();
 
-        PhaseDefinition.zoneId                = fields[0].GetUInt32();
-        PhaseDefinition.entry                 = fields[1].GetUInt32();
-        PhaseDefinition.phasemask             = fields[2].GetUInt32();
-        PhaseDefinition.phaseId               = fields[3].GetUInt32();
-        PhaseDefinition.terrainswapmap        = fields[4].GetUInt32();
-        PhaseDefinition.flags                 = fields[5].GetUInt32();
-
-        // Checks
-        if ((PhaseDefinition.flags & PHASE_FLAG_OVERWRITE_EXISTING) && (PhaseDefinition.flags & PHASE_FLAG_NEGATE_PHASE))
+        MapEntry const* map = sMapStore.LookupEntry(mapId);
+        if (!map)
         {
-            SF_LOG_ERROR("sql.sql", "Flags defined in phase_definitions in zoneId %d and entry %u does contain PHASE_FLAG_OVERWRITE_EXISTING and PHASE_FLAG_NEGATE_PHASE. Setting flags to PHASE_FLAG_OVERWRITE_EXISTING", PhaseDefinition.zoneId, PhaseDefinition.entry);
-            PhaseDefinition.flags &= ~PHASE_FLAG_NEGATE_PHASE;
+            SF_LOG_INFO("sql.sql", "Map %u defined in `terrain_swap_defaults` does not exist, skipped.", mapId);
+            continue;
         }
 
-        _PhaseDefinitionStore[PhaseDefinition.zoneId].push_back(PhaseDefinition);
+        uint32 terrainSwap = fields[1].GetUInt32();
+
+        map = sMapStore.LookupEntry(terrainSwap);
+        if (!map)
+        {
+            SF_LOG_INFO("sql.sql", "TerrainSwapMap %u defined in `terrain_swap_defaults` does not exist, skipped.", terrainSwap);
+            continue;
+        }
+        PhaseInfoStruct defaultSwap;
+        defaultSwap.id = terrainSwap;
+        _terrainMapDefaultStore[mapId].push_back(defaultSwap);
 
         ++count;
-    }
-    while (result->NextRow());
+    } while (result->NextRow());
 
-    SF_LOG_INFO("server.loading", ">> Loaded %u phasing definitions in %u ms.", count, GetMSTimeDiffToNow(oldMSTime));
+    SF_LOG_INFO("server.loading", ">> Loaded %u terrain swap defaults in %u ms.", count, GetMSTimeDiffToNow(oldMSTime));
 }
 
+void ObjectMgr::LoadTerrainPhaseInfo()
+{
+    _terrainPhaseInfoStore.clear();
+
+    uint32 oldMSTime = getMSTime();
+
+    //                                               0       1
+    QueryResult result = WorldDatabase.Query("SELECT Id, TerrainSwapMap FROM `terrain_phase_info`");
+
+    if (!result)
+    {
+        SF_LOG_INFO("server.loading", ">> Loaded 0 terrain phase infos. DB table `terrain_phase_info` is empty.");
+        return;
+    }
+
+    uint32 count = 0;
+    do
+    {
+        Field* fields = result->Fetch();
+
+        uint32 phaseId = fields[0].GetUInt32();
+
+        PhaseEntry const* phase = sPhaseStore.LookupEntry(phaseId);
+        if (!phase)
+        {
+            SF_LOG_INFO("sql.sql", "Phase %u defined in `terrain_phase_info` does not exist, skipped.", phaseId);
+            continue;
+        }
+
+        PhaseInfoStruct terrainSwap;
+        terrainSwap.id = fields[1].GetUInt32();
+        _terrainPhaseInfoStore[phaseId].push_back(terrainSwap);
+
+        ++count;
+    } while (result->NextRow());
+
+    SF_LOG_INFO("server.loading", ">> Loaded %u terrain phase infos in %u ms.", count, GetMSTimeDiffToNow(oldMSTime));
+}
+
+void ObjectMgr::LoadTerrainWorldMaps()
+{
+    _terrainWorldMapStore.clear();
+
+    uint32 oldMSTime = getMSTime();
+
+    //                                               0               1
+    QueryResult result = WorldDatabase.Query("SELECT TerrainSwapMap, WorldMapArea FROM `terrain_worldmap`");
+
+    if (!result)
+    {
+        SF_LOG_INFO("server.loading", ">> Loaded 0 terrain world maps. DB table `terrain_worldmap` is empty.");
+        return;
+    }
+
+    uint32 count = 0;
+    do
+    {
+        Field* fields = result->Fetch();
+
+        uint32 mapId = fields[0].GetUInt32();
+
+        if (!sMapStore.LookupEntry(mapId))
+        {
+            SF_LOG_INFO("sql.sql", "TerrainSwapMap %u defined in `terrain_worldmap` does not exist, skipped.", mapId);
+            continue;
+        }
+
+        uint32 worldMapArea = fields[1].GetUInt32();
+
+        _terrainWorldMapStore[mapId].push_back(worldMapArea);
+
+        ++count;
+    } while (result->NextRow());
+
+    SF_LOG_INFO("server.loading", ">> Loaded %u terrain world maps in %u ms.", count, GetMSTimeDiffToNow(oldMSTime));
+}
+
+void ObjectMgr::LoadAreaPhases()
+{
+    _phases.clear();
+
+    uint32 oldMSTime = getMSTime();
+
+    //                                               0       1
+    QueryResult result = WorldDatabase.Query("SELECT AreaId, PhaseId FROM `phase_area`");
+
+    if (!result)
+    {
+        SF_LOG_INFO("server.loading", ">> Loaded 0 phase areas. DB table `phase_area` is empty.");
+        return;
+    }
+
+    uint32 count = 0;
+    do
+    {
+        Field* fields = result->Fetch();
+
+        PhaseInfoStruct phase;
+        uint32 area = fields[0].GetUInt32();
+        phase.id = fields[1].GetUInt32();
+        _phases[area].push_back(phase);
+
+        ++count;
+    } while (result->NextRow());
+
+    SF_LOG_INFO("server.loading", ">> Loaded %u phase areas in %u ms.", count, GetMSTimeDiffToNow(oldMSTime));
+}
+/*
 void ObjectMgr::LoadSpellPhaseInfo()
 {
     _SpellPhaseStore.clear();
@@ -8850,7 +9023,7 @@ void ObjectMgr::LoadSpellPhaseInfo()
     while (result->NextRow());
     SF_LOG_INFO("server.loading", ">> Loaded %u spell dbc infos in %u ms.", count, GetMSTimeDiffToNow(oldMSTime));
 }
-
+*/
 GameObjectTemplate const* ObjectMgr::GetGameObjectTemplate(uint32 entry)
 {
     GameObjectTemplateContainer::const_iterator itr = _gameObjectTemplateStore.find(entry);
@@ -8898,6 +9071,7 @@ PlayerInfo const* ObjectMgr::GetPlayerInfo(uint32 race, uint32 class_) const
     return info;
 }
 
+/*
 void ObjectMgr::LoadResearchDigsiteInfo()
 {
     _researchDigsiteStore.clear();
@@ -9026,7 +9200,7 @@ void ObjectMgr::LoadResearchProjectRequirements()
     while (result->NextRow());
     SF_LOG_INFO("server.loading", ">> Loaded %u research project requirements in %u ms.", count, GetMSTimeDiffToNow(oldMSTime));
 }
-
+*/
 void ObjectMgr::LoadBattlePetBreedData()
 {
     uint32 oldMSTime = getMSTime();

@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -65,6 +65,22 @@ namespace Skyfire
             typename C::const_iterator it = container.begin();
             std::advance(it, urand(0, container.size() - 1));
             return *it;
+        }
+
+        template<class Iterator1, class Iterator2>
+        bool Intersects(Iterator1 first1, Iterator1 last1, Iterator2 first2, Iterator2 last2)
+        {
+            while (first1 != last1 && first2 != last2)
+            {
+                if (*first1 < *first2)
+                    ++first1;
+                else if (*first2 < *first1)
+                    ++first2;
+                else
+                    return true;
+            }
+
+            return false;
         }
     }
     //! namespace Containers

@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -111,7 +111,7 @@ Map* MapManager::CreateBaseMap(uint32 id)
             map = new MapInstanced(id, i_gridCleanUpDelay);
         else
         {
-            map = new Map(id, i_gridCleanUpDelay, 0, REGULAR_DIFFICULTY);
+            map = new Map(id, i_gridCleanUpDelay, 0, DIFFICULTY_NONE);
             map->LoadRespawnTimes();
         }
 
@@ -158,20 +158,20 @@ bool MapManager::CanPlayerEnter(uint32 mapid, Player* player, bool loginCheck)
     if (!entry)
        return false;
 
-    if (!entry->IsDungeon())
+    if (!entry->IsInstance())
         return true;
 
     InstanceTemplate const* instance = sObjectMgr->GetInstanceTemplate(mapid);
     if (!instance)
         return false;
 
-    Difficulty targetDifficulty = player->GetDifficulty(entry->IsRaid());
+    DifficultyID targetDifficulty = player->GetDifficulty(entry);
     //The player has a heroic mode and tries to enter into instance which has no a heroic mode
     MapDifficulty const* mapDiff = GetMapDifficultyData(entry->MapID, targetDifficulty);
     if (!mapDiff)
     {
         // Send aborted message for dungeons
-        if (entry->IsNonRaidDungeon())
+        if (entry->IsNonRaidInstance())
         {
             player->SendTransferAborted(mapid, TRANSFER_ABORT_DIFFICULTY, player->GetDungeonDifficulty());
             return false;
@@ -195,7 +195,7 @@ bool MapManager::CanPlayerEnter(uint32 mapid, Player* player, bool loginCheck)
         {
             // probably there must be special opcode, because client has this string constant in GlobalStrings.lua
             /// @todo this is not a good place to send the message
-            player->GetSession()->SendAreaTriggerMessage(player->GetSession()->GetSkyFireString(LANG_INSTANCE_RAID_GROUP_ONLY), mapName);
+            player->GetSession()->SendNotification(LANG_INSTANCE_RAID_GROUP_ONLY, mapName);
             SF_LOG_DEBUG("maps", "MAP: Player '%s' must be in a raid group to enter instance '%s'", player->GetName().c_str(), mapName);
             return false;
         }
@@ -252,10 +252,10 @@ bool MapManager::CanPlayerEnter(uint32 mapid, Player* player, bool loginCheck)
     }
 
     // players are only allowed to enter 5 instances per hour
-    if (entry->IsDungeon() && (!player->GetGroup() || (player->GetGroup() && !player->GetGroup()->isLFGGroup())))
+    if (entry->IsInstance() && (!player->GetGroup() || (player->GetGroup() && !player->GetGroup()->isLFGGroup())))
     {
         uint32 instaceIdToCheck = 0;
-        if (InstanceSave* save = player->GetInstanceSave(mapid, entry->IsRaid()))
+        if (InstanceSave* save = player->GetInstanceSave(mapid))
             instaceIdToCheck = save->GetInstanceId();
 
         // instanceId can never be 0 - will not be found
@@ -314,7 +314,7 @@ bool MapManager::IsValidMAP(uint32 mapid, bool startUp)
     if (startUp)
         return mEntry ? true : false;
     else
-        return mEntry && (!mEntry->IsDungeon() || sObjectMgr->GetInstanceTemplate(mapid));
+        return mEntry && (!mEntry->IsInstance() || sObjectMgr->GetInstanceTemplate(mapid));
 
     /// @todo add check for battleground template
 }
@@ -346,7 +346,7 @@ uint32 MapManager::GetNumInstances()
             continue;
         MapInstanced::InstancedMaps &maps = ((MapInstanced*)map)->GetInstancedMaps();
         for (MapInstanced::InstancedMaps::iterator mitr = maps.begin(); mitr != maps.end(); ++mitr)
-            if (mitr->second->IsDungeon()) ret++;
+            if (mitr->second->IsInstance()) ret++;
     }
     return ret;
 }
@@ -363,7 +363,7 @@ uint32 MapManager::GetNumPlayersInInstances()
             continue;
         MapInstanced::InstancedMaps &maps = ((MapInstanced*)map)->GetInstancedMaps();
         for (MapInstanced::InstancedMaps::iterator mitr = maps.begin(); mitr != maps.end(); ++mitr)
-            if (mitr->second->IsDungeon())
+            if (mitr->second->IsInstance())
                 ret += ((InstanceMap*)mitr->second)->GetPlayers().getSize();
     }
     return ret;

@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -428,7 +428,7 @@ void Spell::EffectSchoolDMG(SpellEffIndex effIndex)
                 {
                     // Consumption
                     case 28865:
-                        damage = (((InstanceMap*)m_caster->GetMap())->GetDifficulty() == REGULAR_DIFFICULTY ? 2750 : 4250);
+                        damage = (((InstanceMap*)m_caster->GetMap())->GetDifficulty() == DIFFICULTY_NONE ? 2750 : 4250);
                         break;
                     // percent from health with min
                     case 25599:                             // Thundercrash
@@ -2036,7 +2036,7 @@ void Spell::EffectSummonChangeItem(SpellEffIndex effIndex)
 
     for (uint8 j = PERM_ENCHANTMENT_SLOT; j <= TEMP_ENCHANTMENT_SLOT; ++j)
         if (m_CastItem->GetEnchantmentId(EnchantmentSlot(j)))
-            pNewItem->SetEnchantment(EnchantmentSlot(j), m_CastItem->GetEnchantmentId(EnchantmentSlot(j)), m_CastItem->GetEnchantmentDuration(EnchantmentSlot(j)), m_CastItem->GetEnchantmentCharges(EnchantmentSlot(j)));
+            pNewItem->SetEnchantment(EnchantmentSlot(j), m_CastItem->GetEnchantmentId(EnchantmentSlot(j)), m_CastItem->GetEnchantmentDuration(EnchantmentSlot(j)), m_CastItem->GetEnchantmentCharges(EnchantmentSlot(j)), 0);
 
     if (m_CastItem->GetUInt32Value(ITEM_FIELD_DURABILITY) < m_CastItem->GetUInt32Value(ITEM_FIELD_MAX_DURABILITY))
     {
@@ -2641,11 +2641,17 @@ void Spell::EffectEnchantItemPerm(SpellEffIndex effIndex)
 
         uint32 enchant_id = m_spellInfo->Effects[effIndex].MiscValue;
         if (!enchant_id)
+        {
+            SF_LOG_ERROR("spells", "Spell %u Effect %u (SPELL_EFFECT_ENCHANT_ITEM_PERMANENT) have 0 as enchanting id", m_spellInfo->Id, effIndex);
             return;
+        }
 
         SpellItemEnchantmentEntry const* pEnchant = sSpellItemEnchantmentStore.LookupEntry(enchant_id);
         if (!pEnchant)
+        {
+            SF_LOG_ERROR("spells", "Spell %u Effect %u (SPELL_EFFECT_ENCHANT_ITEM_PERMANENT) have non-existing enchant_id %u ", m_spellInfo->Id, effIndex, enchant_id);
             return;
+        }
 
         // item can be in trade slot and have owner diff. from caster
         Player* item_owner = itemTarget->GetOwner();
@@ -3333,13 +3339,15 @@ void Spell::EffectSummonObjectWild(SpellEffIndex effIndex)
     Map* map = target->GetMap();
 
     if (!pGameObj->Create(sObjectMgr->GenerateLowGuid(HIGHGUID_GAMEOBJECT), gameobject_id, map,
-        m_caster->GetPhaseMask(), x, y, z, target->GetOrientation(), 0.0f, 0.0f, 0.0f, 0.0f, 100, GO_STATE_READY))
+        x, y, z, target->GetOrientation(), 0.0f, 0.0f, 0.0f, 0.0f, 100, GO_STATE_READY))
     {
         delete pGameObj;
         return;
     }
 
     int32 duration = m_spellInfo->GetDuration();
+    for (auto phase : m_caster->GetPhases())
+        pGameObj->SetPhased(phase, false, true);
 
     pGameObj->SetRespawnTime(duration > 0 ? duration/IN_MILLISECONDS : 0);
     pGameObj->SetSpellId(m_spellInfo->Id);
@@ -3358,8 +3366,11 @@ void Spell::EffectSummonObjectWild(SpellEffIndex effIndex)
     {
         GameObject* linkedGO = new GameObject;
         if (linkedGO->Create(sObjectMgr->GenerateLowGuid(HIGHGUID_GAMEOBJECT), linkedEntry, map,
-            m_caster->GetPhaseMask(), x, y, z, target->GetOrientation(), 0.0f, 0.0f, 0.0f, 0.0f, 100, GO_STATE_READY))
+            x, y, z, target->GetOrientation(), 0.0f, 0.0f, 0.0f, 0.0f, 100, GO_STATE_READY))
         {
+            for (auto phase : m_caster->GetPhases())
+                linkedGO->SetPhased(phase, false, true);
+
             linkedGO->SetRespawnTime(duration > 0 ? duration/IN_MILLISECONDS : 0);
             linkedGO->SetSpellId(m_spellInfo->Id);
 
@@ -3619,7 +3630,7 @@ void Spell::EffectScriptEffect(SpellEffIndex effIndex)
                     const char *gender = "his";
                     if (m_caster->getGender() > 0)
                         gender = "her";
-                    sprintf(buf, "%s rubs %s [Decahedral Dwarven Dice] between %s hands and rolls. One %u and one %u.", m_caster->GetName().c_str(), gender, gender, urand(1, 10), urand(1, 10));
+                    snprintf(buf, sizeof(buf), "%s rubs %s [Decahedral Dwarven Dice] between %s hands and rolls. One %u and one %u.", m_caster->GetName().c_str(), gender, gender, urand(1, 10), urand(1, 10));
                     m_caster->MonsterTextEmote(buf, 0);
                     break;
                 }
@@ -3630,7 +3641,7 @@ void Spell::EffectScriptEffect(SpellEffIndex effIndex)
                     const char *gender = "his";
                     if (m_caster->getGender() > 0)
                         gender = "her";
-                    sprintf(buf, "%s causually tosses %s [Worn Troll Dice]. One %u and one %u.", m_caster->GetName().c_str(), gender, urand(1, 6), urand(1, 6));
+                    snprintf(buf, sizeof(buf), "%s causually tosses %s [Worn Troll Dice]. One %u and one %u.", m_caster->GetName().c_str(), gender, urand(1, 6), urand(1, 6));
                     m_caster->MonsterTextEmote(buf, 0);
                     break;
                 }
@@ -4063,7 +4074,7 @@ void Spell::EffectDuel(SpellEffIndex effIndex)
 
     Map* map = m_caster->GetMap();
     if (!pGameObj->Create(sObjectMgr->GenerateLowGuid(HIGHGUID_GAMEOBJECT), gameobject_id,
-        map, m_caster->GetPhaseMask(),
+        map,
         m_caster->GetPositionX()+(unitTarget->GetPositionX()-m_caster->GetPositionX())/2,
         m_caster->GetPositionY()+(unitTarget->GetPositionY()-m_caster->GetPositionY())/2,
         m_caster->GetPositionZ(),
@@ -4072,6 +4083,9 @@ void Spell::EffectDuel(SpellEffIndex effIndex)
         delete pGameObj;
         return;
     }
+
+    for (auto phase : m_caster->GetPhases())
+        pGameObj->SetPhased(phase, false, true);
 
     pGameObj->SetUInt32Value(GAMEOBJECT_FIELD_FACTION_TEMPLATE, m_caster->getFaction());
     pGameObj->SetUInt32Value(GAMEOBJECT_FIELD_LEVEL, m_caster->getLevel()+1);
@@ -4479,7 +4493,7 @@ void Spell::EffectSummonObject(SpellEffIndex effIndex)
 
     Map* map = m_caster->GetMap();
     if (!go->Create(sObjectMgr->GenerateLowGuid(HIGHGUID_GAMEOBJECT), go_id, map,
-        m_caster->GetPhaseMask(), x, y, z, m_caster->GetOrientation(), 0.0f, 0.0f, 0.0f, 0.0f, 0, GO_STATE_READY))
+        x, y, z, m_caster->GetOrientation(), 0.0f, 0.0f, 0.0f, 0.0f, 0, GO_STATE_READY))
     {
         delete go;
         return;
@@ -4487,6 +4501,10 @@ void Spell::EffectSummonObject(SpellEffIndex effIndex)
 
     //pGameObj->SetUInt32Value(GAMEOBJECT_FIELD_LEVEL, m_caster->getLevel());
     int32 duration = m_spellInfo->GetDuration();
+
+    for (auto phase : m_caster->GetPhases())
+        go->SetPhased(phase, false, true);
+
     go->SetRespawnTime(duration > 0 ? duration/IN_MILLISECONDS : 0);
     go->SetSpellId(m_spellInfo->Id);
     m_caster->AddGameObject(go);
@@ -5106,13 +5124,16 @@ void Spell::EffectTransmitted(SpellEffIndex effIndex)
     GameObject* pGameObj = new GameObject;
 
     if (!pGameObj->Create(sObjectMgr->GenerateLowGuid(HIGHGUID_GAMEOBJECT), name_id, cMap,
-        m_caster->GetPhaseMask(), fx, fy, fz, m_caster->GetOrientation(), 0.0f, 0.0f, 0.0f, 0.0f, 100, GO_STATE_READY))
+        fx, fy, fz, m_caster->GetOrientation(), 0.0f, 0.0f, 0.0f, 0.0f, 100, GO_STATE_READY))
     {
         delete pGameObj;
         return;
     }
 
     int32 duration = m_spellInfo->GetDuration();
+
+    for (auto phase : m_caster->GetPhases())
+        pGameObj->SetPhased(phase, false, true);
 
     switch (goinfo->type)
     {
@@ -5172,8 +5193,11 @@ void Spell::EffectTransmitted(SpellEffIndex effIndex)
     {
         GameObject* linkedGO = new GameObject;
         if (linkedGO->Create(sObjectMgr->GenerateLowGuid(HIGHGUID_GAMEOBJECT), linkedEntry, cMap,
-            m_caster->GetPhaseMask(), fx, fy, fz, m_caster->GetOrientation(), 0.0f, 0.0f, 0.0f, 0.0f, 100, GO_STATE_READY))
+            fx, fy, fz, m_caster->GetOrientation(), 0.0f, 0.0f, 0.0f, 0.0f, 100, GO_STATE_READY))
         {
+            for (auto phase : m_caster->GetPhases())
+                linkedGO->SetPhased(phase, false, true);
+
             linkedGO->SetRespawnTime(duration > 0 ? duration/IN_MILLISECONDS : 0);
             //linkedGO->SetUInt32Value(GAMEOBJECT_FIELD_LEVEL, m_caster->getLevel());
             linkedGO->SetSpellId(m_spellInfo->Id);
@@ -5714,18 +5738,15 @@ void Spell::EffectPlayMusic(SpellEffIndex effIndex)
     if (!unitTarget || unitTarget->GetTypeId() != TYPEID_PLAYER)
         return;
 
-    uint32 soundid = m_spellInfo->Effects[effIndex].MiscValue;
-
-    if (!sSoundEntriesStore.LookupEntry(soundid))
+    uint32 SoundKitID = m_spellInfo->Effects[effIndex].MiscValue;
+    
+    if (!sSoundEntriesStore.LookupEntry(SoundKitID))
     {
-        SF_LOG_ERROR("spells", "EffectPlayMusic: Sound (Id: %u) not exist in spell %u.", soundid, m_spellInfo->Id);
+        SF_LOG_ERROR("spells", "EffectPlayMusic: Sound (Id: %u) not exist in spell %u.", SoundKitID, m_spellInfo->Id);
         return;
     }
 
-    WorldPacket data(SMSG_PLAY_MUSIC, 4);
-    data << uint32(soundid);
-    data << uint64(unitTarget->GetGUID());
-    unitTarget->ToPlayer()->GetSession()->SendPacket(&data);
+    unitTarget->ToPlayer()->GetSession()->SendPlayMusic(SoundKitID);
 }
 
 void Spell::EffectSpecCount(SpellEffIndex /*effIndex*/)

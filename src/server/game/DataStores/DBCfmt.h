@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -54,6 +54,7 @@ char const Criteriafmt[] = "niiiiixxiiii";
 char const CriteriaTreefmt[] = "niixiiis";
 char const ChrSpecializationfmt[] = "nxiixiiixxxxxx";
 char const DestructibleModelDatafmt[] = "ixxixxxixxxixxxixxxxxxxx";
+char const Difficultyfmt[] = "niixxxixxxxx";
 char const DungeonEncounterfmt[] = "iiixisxxx";
 char const DurabilityCostsfmt[] = "niiiiiiiiiiiiiiiiiiiiiiiiiiiii";
 char const DurabilityQualityfmt[] = "nf";
@@ -102,6 +103,7 @@ char const LFGDungeonEntryfmt[] = "nsiiiiiiiiixxixixixxxxxxxxxxx";
 char const LiquidTypefmt[] = "nxxixixxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
 char const LockEntryfmt[] = "niiiiiiiiiiiiiiiiiiiiiiiixxxxxxxx";
 char const PhaseEntryfmt[] = "nsi";
+char const PhaseGroupfmt[] = "nii";
 char const MailTemplateEntryfmt[] = "nxs";
 char const MapEntryfmt[] = "nxixxsixxixiffxiixi";
 char const MapDifficultyEntryfmt[] = "diisiix";
@@ -144,7 +146,7 @@ char const SpellEntryfmt[] =            "nssxxixxiiiiiiiiiiiiiiiii";
 char const SpellMiscfmt[] = "nxxiiiiiiiiiiiiiiiiifiiiii";
 char const SpellEffectScalingfmt[] = "nfffxi";
 char const SpellFocusObjectfmt[] = "nx";
-char const SpellItemEnchantmentfmt[] = "nxiiiiiixxxiiisiiiiiiix";
+char const SpellItemEnchantmentfmt[] = "nxiiiiiiiiisiiiiiiiixxxxxx";
 char const SpellItemEnchantmentConditionfmt[] = "nbbbbbxxxxxbbbbbbbbbbiiiiiXXXXX";
 char const SpellRadiusfmt[] = "nffxf";
 char const SpellRangefmt[] = "nffffixx";
@@ -162,7 +164,7 @@ char const SpellCooldownsEntryfmt[] = "dxxiii";
 char const SpellLevelsEntryfmt[] = "dxxiii";
 char const SpellRuneCostfmt[] = "niiixi";
 char const SpellShapeshiftEntryfmt[] = "nixixx";
-char const SpellShapeshiftFormfmt[] = "nxxiixiiixxiiiiiiiixx";
+char const SpellShapeshiftFormfmt[] = "nxxiixiiixxiiiiiiiiix";
 char const SummonPropertiesfmt[] = "niiiii";
 char const TalentEntryfmt[] = "nxiiixxxixx";
 char const TaxiNodesEntryfmt[] = "nifffsiixixx";

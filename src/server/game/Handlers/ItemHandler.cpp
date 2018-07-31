@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -1052,13 +1052,56 @@ void WorldSession::HandleAutoStoreBankItemOpcode(WorldPacket& recvPacket)
     }
 }
 
-void WorldSession::SendEnchantmentLog(uint64 target, uint64 caster, uint32 itemId, uint32 enchantId)
+void WorldSession::SendEnchantmentLog(uint64 target, uint64 caster, uint64 itemGuid, uint32 itemId, uint32 enchantId, uint32 enchantmentSlot)
 {
-    WorldPacket data(SMSG_ENCHANTMENT_LOG, (8+8+4+4));
-    data.appendPackGUID(target);
-    data.appendPackGUID(caster);
+    ObjectGuid TargetGUID = target;
+    ObjectGuid CasterGUID = caster;
+    ObjectGuid ItemGUID = itemGuid;
+
+    WorldPacket data(SMSG_ENCHANTMENT_LOG, (8+8+8+4+4+4+1));
     data << uint32(itemId);
+    data << uint32(enchantmentSlot);
     data << uint32(enchantId);
+
+    data.WriteGuidMask(CasterGUID, 6, 7);
+    data.WriteGuidMask(TargetGUID, 6, 4);
+    data.WriteGuidMask(CasterGUID, 5);
+    data.WriteGuidMask(ItemGUID, 7, 2, 3);
+    data.WriteGuidMask(CasterGUID, 4, 3);
+    data.WriteGuidMask(ItemGUID, 6);
+    data.WriteGuidMask(TargetGUID,1);
+    data.WriteGuidMask(CasterGUID,2);
+    data.WriteGuidMask(TargetGUID,5);
+    data.WriteGuidMask(ItemGUID, 4);
+    data.WriteGuidMask(TargetGUID, 0);
+    data.WriteGuidMask(ItemGUID, 1);
+    data.WriteGuidMask(CasterGUID, 0);
+    data.WriteGuidMask(TargetGUID, 3, 7);
+    data.WriteGuidMask(ItemGUID, 5, 0);
+    data.WriteGuidMask(TargetGUID, 2);
+    data.WriteGuidMask(CasterGUID, 1);
+
+    data.WriteGuidBytes(CasterGUID, 0);
+    data.WriteGuidBytes(TargetGUID, 2);
+    data.WriteGuidBytes(ItemGUID, 7);
+    data.WriteGuidBytes(CasterGUID, 1);
+    data.WriteGuidBytes(TargetGUID, 4);
+    data.WriteGuidBytes(ItemGUID, 5);
+    data.WriteGuidBytes(CasterGUID, 4);
+    data.WriteGuidBytes(ItemGUID, 2);
+    data.WriteGuidBytes(TargetGUID, 6, 0);
+    data.WriteGuidBytes(ItemGUID, 0, 4);
+    data.WriteGuidBytes(CasterGUID, 3);
+    data.WriteGuidBytes(TargetGUID, 5);
+    data.WriteGuidBytes(ItemGUID, 1);
+    data.WriteGuidBytes(CasterGUID, 3);
+    data.WriteGuidBytes(TargetGUID, 7);
+    data.WriteGuidBytes(CasterGUID, 7);
+    data.WriteGuidBytes(ItemGUID, 3);
+    data.WriteGuidBytes(CasterGUID, 6, 2, 5);
+    data.WriteGuidBytes(ItemGUID, 6);
+    data.WriteGuidBytes(TargetGUID, 1);
+
     GetPlayer()->SendMessageToSet(&data, true);
 }
 
@@ -1471,7 +1514,22 @@ void WorldSession::HandleSocketOpcode(WorldPacket& recvData)
     _player->RemoveTradeableItem(itemTarget);
     itemTarget->ClearSoulboundTradeable(_player);           // clear tradeable flag
 
-    itemTarget->SendUpdateSockets();
+    SendUpdateSockets(itemTarget->GetGUID(), itemTarget);
+}
+
+void WorldSession::SendUpdateSockets(ObjectGuid ItemGUID, Item* item)
+{
+    WorldPacket data(SMSG_SOCKET_GEMS_RESULT, 8 + 4 + 4 + 4 + 4);
+    data.WriteGuidMask(ItemGUID, 2, 5, 7, 6, 0, 1, 3, 4);
+    data.WriteGuidBytes(ItemGUID, 2);
+    data << uint32(item->GetEnchantmentId(EnchantmentSlot(BONUS_ENCHANTMENT_SLOT)));
+    data.WriteGuidBytes(ItemGUID, 3, 7, 4);
+
+    for (uint32 i = SOCK_ENCHANTMENT_SLOT; i <= SOCK_ENCHANTMENT_SLOT_3; ++i)
+        data << uint32(item->GetEnchantmentId(EnchantmentSlot(i)));
+
+    data.WriteGuidBytes(5, 0, 1, 6);
+    SendPacket(&data);
 }
 
 void WorldSession::HandleCancelTempEnchantmentOpcode(WorldPacket& recvData)

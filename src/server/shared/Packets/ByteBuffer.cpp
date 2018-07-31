@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -75,8 +75,8 @@ void ByteBuffer::textlike() const
     o << "STORAGE_SIZE: " << size();
     for (uint32 i = 0; i < size(); ++i)
     {
-        char buf[1];
-        snprintf(buf, 1, "%c", read<uint8>(i));
+        char buf[2];
+        snprintf(buf, sizeof(buf), "%c", read<uint8>(i));
         o << buf;
     }
     o << " ";
@@ -95,8 +95,8 @@ void ByteBuffer::hexlike() const
 
     for (uint32 i = 0; i < size(); ++i)
     {
-        char buf[3];
-        snprintf(buf, 1, "%2X ", read<uint8>(i));
+        char buf[4];
+        snprintf(buf, sizeof(buf), "%2X ", read<uint8>(i));
         if ((i == (j * 8)) && ((i != (k * 16))))
         {
             o << "| ";

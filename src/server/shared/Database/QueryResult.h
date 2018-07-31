@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -56,6 +56,8 @@ class ResultSet
         void CleanUp();
         MYSQL_RES* _result;
         MYSQL_FIELD* _fields;
+        ResultSet(ResultSet const& right) = delete;
+        ResultSet & operator=(ResultSet const& right) = delete;
 };
 
 typedef Skyfire::AutoPtr<ResultSet, ACE_Thread_Mutex> QueryResult;
@@ -94,13 +96,14 @@ class PreparedResultSet
         MYSQL_STMT* m_stmt;
         MYSQL_RES* m_res;
 
-        my_bool* m_isNull;
+        bool* m_isNull;
         unsigned long* m_length;
 
         void FreeBindBuffer();
         void CleanUp();
         bool _NextRow();
-
+        PreparedResultSet(PreparedResultSet const& right) = delete;
+        PreparedResultSet & operator=(PreparedResultSet const& right) = delete;
 };
 
 typedef Skyfire::AutoPtr<PreparedResultSet, ACE_Thread_Mutex> PreparedQueryResult;

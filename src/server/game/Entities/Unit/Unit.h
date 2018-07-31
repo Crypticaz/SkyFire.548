@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -1166,26 +1166,28 @@ class GlobalCooldownMgr                                     // Shared by Player 
 
 enum ActiveStates
 {
-    ACT_PASSIVE = 0x01,                                    // 0x01 - passive
+    ACT_PASSIVE  = 0x01,                                    // 0x01 - passive
+    ACT_ASSIST   = 0x03,                                    // 0x03 - assist
     ACT_DISABLED = 0x81,                                    // 0x80 - castable
-    ACT_ENABLED = 0xC1,                                    // 0x40 | 0x80 - auto cast + castable
-    ACT_COMMAND = 0x07,                                    // 0x01 | 0x02 | 0x04
+    ACT_ENABLED  = 0xC1,                                    // 0x40 | 0x80 - auto cast + castable
+    ACT_COMMAND  = 0x07,                                    // 0x01 | 0x02 | 0x04
     ACT_REACTION = 0x06,                                    // 0x02 | 0x04
-    ACT_DECIDE = 0x00                                     // custom
+    ACT_DECIDE   = 0x00                                     // custom
 };
 
 enum ReactStates
 {
-    REACT_PASSIVE = 0,
-    REACT_DEFENSIVE = 1,
-    REACT_AGGRESSIVE = 2
+    REACT_PASSIVE    = 0,
+    REACT_DEFENSIVE  = 1,
+    REACT_AGGRESSIVE = 2,
+    REACT_ASSIST     = 3
 };
 
 enum CommandStates
 {
-    COMMAND_STAY = 0,
-    COMMAND_FOLLOW = 1,
-    COMMAND_ATTACK = 2,
+    COMMAND_STAY    = 0,
+    COMMAND_FOLLOW  = 1,
+    COMMAND_ATTACK  = 2,
     COMMAND_ABANDON = 3,
     COMMAND_MOVE_TO = 4
 };
@@ -2231,7 +2233,7 @@ class Unit : public WorldObject
     void RemoveAurasDueToSpellBySteal(uint32 spellId, uint64 casterGUID, Unit* stealer);
     void RemoveAurasDueToItemSpell(uint32 spellId, uint64 castItemGuid);
     void RemoveAurasByType(AuraType auraType, uint64 casterGUID = 0, Aura* except = NULL, bool negative = true, bool positive = true);
-    void RemoveNotOwnSingleTargetAuras(uint32 newPhase = 0x0);
+    void RemoveNotOwnSingleTargetAuras(uint32 newPhase = 0, bool phaseid=false);
     void RemoveAurasWithInterruptFlags(uint32 flag, uint32 except = 0);
     void RemoveAurasWithAttribute(uint32 flags);
     void RemoveAurasWithFamily(SpellFamilyNames family, uint32 familyFlag1, uint32 familyFlag2, uint32 familyFlag3, uint64 casterGUID);
@@ -2446,7 +2448,8 @@ class Unit : public WorldObject
     // Visibility system
     bool IsVisible() const;
     void SetVisible(bool x);
-
+    void ClearPhases(bool update = false);
+    bool SetPhased(uint32 id, bool update, bool apply);
     // common function for visibility checks for player/creatures with detection code
     void SetPhaseMask(uint32 newPhaseMask, bool update) override;// overwrite WorldObject::SetPhaseMask
     void UpdateObjectVisibility(bool forced = true) override;

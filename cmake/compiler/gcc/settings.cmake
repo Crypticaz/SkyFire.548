@@ -1,5 +1,5 @@
-# Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/
-# Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+# Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/
+# Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
 #
 # This file is free software; as a special exception the author gives
 # unlimited permission to copy and/or distribute it, with or without
@@ -12,15 +12,13 @@
 # Set build-directive (used in core to tell which buildtype we used)
 add_definitions(-D_BUILD_DIRECTIVE='"${CMAKE_BUILD_TYPE}"')
 
-# Check C++14 compiler support
+# Check C++17 compiler support
 include(CheckCXXCompilerFlag)
-CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX14)
-CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
-if(COMPILER_SUPPORTS_CXX14)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+CHECK_CXX_COMPILER_FLAG("-std=c++17" COMPILER_SUPPORTS_CXX17)
+if(COMPILER_SUPPORTS_CXX17)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 else()
-  message(FATAL_ERROR "Error, SkyFire requires a compiler that supports C++14!")
+  message(FATAL_ERROR "Error, SkyFire requires a compiler that supports C++17!")
 endif()
 
 if(PLATFORM EQUAL 32)

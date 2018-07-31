@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -87,7 +87,7 @@ private:
     uint32 _lastChange;
     uint32 _delaytime;
 public:
-    FreezeDetectorRunnable() { _delaytime = 0; }
+    FreezeDetectorRunnable() { _loops = 0; _lastChange = 0; _delaytime = 0; }
 
     void SetDelayTime(uint32 t) { _delaytime = t; }
 

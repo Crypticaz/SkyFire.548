@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -801,25 +801,6 @@ bool Item::HasEnchantRequiredSkill(const Player* player) const
   return true;
 }
 
-uint32 Item::GetEnchantRequiredLevel() const
-{
-    uint32 level = 0;
-
-    // Check all enchants for required level
-    for (uint32 enchant_slot = PERM_ENCHANTMENT_SLOT; enchant_slot < MAX_ENCHANTMENT_SLOT; ++enchant_slot)
-    {
-        if (enchant_slot > PRISMATIC_ENCHANTMENT_SLOT && enchant_slot < PROP_ENCHANTMENT_SLOT_0)    // not holding enchantment id
-            continue;
-
-        if (uint32 enchant_id = GetEnchantmentId(EnchantmentSlot(enchant_slot)))
-            if (SpellItemEnchantmentEntry const* enchantEntry = sSpellItemEnchantmentStore.LookupEntry(enchant_id))
-                if (enchantEntry->requiredLevel > level)
-                    level = enchantEntry->requiredLevel;
-    }
-
-    return level;
-}
-
 bool Item::IsBoundByEnchant() const
 {
     // Check all enchants for soulbound
@@ -900,10 +881,10 @@ void Item::SetEnchantment(EnchantmentSlot slot, uint32 id, uint32 duration, uint
     if (slot < MAX_INSPECTED_ENCHANTMENT_SLOT)
     {
         if (uint32 oldEnchant = GetEnchantmentId(slot))
-            owner->GetSession()->SendEnchantmentLog(GetOwnerGUID(), 0, GetEntry(), oldEnchant);
+            owner->GetSession()->SendEnchantmentLog(GetOwnerGUID(), 0, GetGUID(), GetEntry(), oldEnchant, slot);
 
         if (id)
-            owner->GetSession()->SendEnchantmentLog(GetOwnerGUID(), caster, GetEntry(), id);
+            owner->GetSession()->SendEnchantmentLog(GetOwnerGUID(), caster, GetGUID(), GetEntry(), id, slot);
     }
 
     SetUInt32Value(ITEM_FIELD_ENCHANTMENT + slot*MAX_ENCHANTMENT_OFFSET + ENCHANTMENT_ID_OFFSET, id);
@@ -1024,16 +1005,6 @@ bool Item::IsLimitedToAnotherMapOrZone(uint32 cur_mapId, uint32 cur_zoneId) cons
 {
     ItemTemplate const* proto = GetTemplate();
     return proto && ((proto->Map && proto->Map != cur_mapId) || (proto->Area && proto->Area != cur_zoneId));
-}
-
-void Item::SendUpdateSockets()
-{
-    WorldPacket data(SMSG_SOCKET_GEMS_RESULT, 8+4+4+4+4);
-    data << uint64(GetGUID());
-    for (uint32 i = SOCK_ENCHANTMENT_SLOT; i <= BONUS_ENCHANTMENT_SLOT; ++i)
-        data << uint32(GetEnchantmentId(EnchantmentSlot(i)));
-
-    GetOwner()->GetSession()->SendPacket(&data);
 }
 
 // Though the client has the information in the item's data field,

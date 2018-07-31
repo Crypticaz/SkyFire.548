@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -1707,6 +1707,14 @@ SpellCastResult SpellInfo::CheckLocation(uint32 map_id, uint32 zone_id, uint32 a
                         return SPELL_FAILED_INCORRECT_AREA;
                     break;
                 }
+                case SPELL_AURA_MOD_SHAPESHIFT:
+                {
+                    if (SpellShapeshiftFormEntry const* spellShapeshiftForm = sSpellShapeshiftFormStore.LookupEntry(Effects[i].MiscValue))
+                        if (uint32 mountType = spellShapeshiftForm->mount_type)
+                            if (!player->GetMountCapability(mountType))
+                                return SPELL_FAILED_NOT_HERE;
+                    break;
+                }
                 case SPELL_AURA_MOUNTED:
                 {
                     if (Effects[i].MiscValueB && !player->GetMountCapability(Effects[i].MiscValueB))
@@ -2419,7 +2427,7 @@ int32 SpellInfo::CalcPowerCost(Unit const* caster, SpellSchoolMask schoolMask) c
         }
     }
 
-    // Flat mod from caster auras by spell school and power type
+    /*// Flat mod from caster auras by spell school and power type
     Unit::AuraEffectList const& auras = caster->GetAuraEffectsByType(SPELL_AURA_MOD_POWER_COST_SCHOOL);
     for (Unit::AuraEffectList::const_iterator i = auras.begin(); i != auras.end(); ++i)
     {
@@ -2428,7 +2436,7 @@ int32 SpellInfo::CalcPowerCost(Unit const* caster, SpellSchoolMask schoolMask) c
         if (!((*i)->GetMiscValueB() & (1 << PowerType)))
             continue;
         powerCost += (*i)->GetAmount();
-    }
+    }*/
 
     // Shiv - costs 20 + weaponSpeed*10 energy (apply only to non-triggered spell with energy cost)
     if (AttributesEx4 & SPELL_ATTR4_SPELL_VS_EXTEND_COST)
@@ -2465,6 +2473,7 @@ int32 SpellInfo::CalcPowerCost(Unit const* caster, SpellSchoolMask schoolMask) c
         }
     }
 
+    /*
     // PCT mod from user auras by spell school and power type
     Unit::AuraEffectList const& aurasPct = caster->GetAuraEffectsByType(SPELL_AURA_MOD_POWER_COST_SCHOOL_PCT);
     for (Unit::AuraEffectList::const_iterator i = aurasPct.begin(); i != aurasPct.end(); ++i)
@@ -2477,6 +2486,7 @@ int32 SpellInfo::CalcPowerCost(Unit const* caster, SpellSchoolMask schoolMask) c
     }
     if (powerCost < 0)
         powerCost = 0;
+        */
     return powerCost;
 }
 

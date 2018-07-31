@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -58,7 +58,7 @@ protected:
 class ItemChatLink : public ChatLink
 {
 public:
-    ItemChatLink() : ChatLink(), _item(NULL), _suffix(NULL), _property(NULL) { }
+    ItemChatLink() : ChatLink(), _item(NULL), _suffix(NULL), _property(NULL) { memset(_data, 0, sizeof(_data)); }
     virtual bool Initialize(std::istringstream& iss);
     virtual bool ValidateName(char* buffer, const char* context);
 
@@ -100,7 +100,7 @@ protected:
 class AchievementChatLink : public ChatLink
 {
 public:
-    AchievementChatLink() : ChatLink(), _guid(0), _achievement(NULL) { }
+    AchievementChatLink() : ChatLink(), _guid(0), _achievement(NULL) { memset(_data, 0, sizeof(_data)); }
     virtual bool Initialize(std::istringstream& iss);
     virtual bool ValidateName(char* buffer, const char* context);
 

@@ -1,5 +1,5 @@
-# Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/
-# Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+# Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/
+# Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
 #
 # This file is free software; as a special exception the author gives
 # unlimited permission to copy and/or distribute it, with or without
@@ -91,28 +91,28 @@ IF(WIN32 AND NOT CYGWIN)
 
     FIND_LIBRARY(LIB_EAY_DEBUG
       NAMES
-        libeay32MDd libeay32
+        libeay32MDd libeay32 libcrypto64MDd libcrypto64
       PATHS
         ${OPENSSL_ROOT_DIR}/lib/VC
     )
 
     FIND_LIBRARY(LIB_EAY_RELEASE
       NAMES
-        libeay32MD libeay32
+        libeay32MD libeay32 libcrypto64MD libcrypto64
       PATHS
         ${OPENSSL_ROOT_DIR}/lib/VC
     )
 
     FIND_LIBRARY(SSL_EAY_DEBUG
       NAMES
-        ssleay32MDd ssleay32 ssl
+        ssleay32MDd ssleay32 ssl libssl64MDd libssl64
       PATHS
         ${OPENSSL_ROOT_DIR}/lib/VC
     )
 
     FIND_LIBRARY(SSL_EAY_RELEASE
       NAMES
-        ssleay32MD ssleay32 ssl
+        ssleay32MD ssleay32 ssl libssl libssl64MD libssl64
       PATHS
         ${OPENSSL_ROOT_DIR}/lib/VC
     )

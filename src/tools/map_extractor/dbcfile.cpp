@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2016 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -22,7 +22,8 @@
 #include "dbcfile.h"
 
 DBCFile::DBCFile(HANDLE file) :
-    _file(file), _data(NULL), _stringTable(NULL)
+    _file(file), _recordSize(0), _recordCount(0), _fieldCount(0),
+    _stringSize(0), _data(NULL), _stringTable(NULL)
 {
 }
 

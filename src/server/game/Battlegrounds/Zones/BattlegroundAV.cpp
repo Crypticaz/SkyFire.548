@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -522,13 +522,13 @@ void BattlegroundAV::HandleAreaTrigger(Player* player, uint32 trigger)
         case 95:
         case 2608:
             if (player->GetTeam() != ALLIANCE)
-                player->GetSession()->SendAreaTriggerMessage("Only The Alliance can use that portal");
+                player->GetSession()->SendNotification("Only The Alliance can use that portal");
             else
                 player->LeaveBattleground();
             break;
         case 2606:
             if (player->GetTeam() != HORDE)
-                player->GetSession()->SendAreaTriggerMessage("Only The Horde can use that portal");
+                player->GetSession()->SendNotification("Only The Horde can use that portal");
             else
                 player->LeaveBattleground();
             break;
@@ -636,9 +636,9 @@ void BattlegroundAV::EventPlayerDestroyedPoint(BG_AV_Nodes node)
     //send a nice message to all :)
     char buf[256];
     if (IsTower(node))
-        sprintf(buf, GetSkyFireString(LANG_BG_AV_TOWER_TAKEN), GetNodeName(node), (owner == ALLIANCE) ? GetSkyFireString(LANG_BG_AV_ALLY) : GetSkyFireString(LANG_BG_AV_HORDE));
+        snprintf(buf, sizeof(buf), GetSkyFireString(LANG_BG_AV_TOWER_TAKEN), GetNodeName(node), (owner == ALLIANCE) ? GetSkyFireString(LANG_BG_AV_ALLY) : GetSkyFireString(LANG_BG_AV_HORDE));
     else
-        sprintf(buf, GetSkyFireString(LANG_BG_AV_GRAVE_TAKEN), GetNodeName(node), (owner == ALLIANCE) ? GetSkyFireString(LANG_BG_AV_ALLY) :GetSkyFireString(LANG_BG_AV_HORDE));
+        snprintf(buf, sizeof(buf), GetSkyFireString(LANG_BG_AV_GRAVE_TAKEN), GetNodeName(node), (owner == ALLIANCE) ? GetSkyFireString(LANG_BG_AV_ALLY) :GetSkyFireString(LANG_BG_AV_HORDE));
 
     Creature* creature = GetBGCreature(AV_CPLACE_HERALD);
     if (creature)
@@ -717,7 +717,7 @@ void BattlegroundAV::ChangeMineOwner(uint8 mine, uint32 team, bool initial)
     {
         m_Mine_Reclaim_Timer[mine]=AV_MINE_RECLAIM_TIMER;
         char buf[256];
-        sprintf(buf, GetSkyFireString(LANG_BG_AV_MINE_TAKEN), GetSkyFireString((mine == AV_NORTH_MINE) ? LANG_BG_AV_MINE_NORTH : LANG_BG_AV_MINE_SOUTH),
+        snprintf(buf, sizeof(buf), GetSkyFireString(LANG_BG_AV_MINE_TAKEN), GetSkyFireString((mine == AV_NORTH_MINE) ? LANG_BG_AV_MINE_NORTH : LANG_BG_AV_MINE_SOUTH),
                 (team == ALLIANCE) ?  GetSkyFireString(LANG_BG_AV_ALLY) : GetSkyFireString(LANG_BG_AV_HORDE));
         Creature* creature = GetBGCreature(AV_CPLACE_HERALD);
         if (creature)
@@ -964,7 +964,7 @@ void BattlegroundAV::EventPlayerDefendsPoint(Player* player, uint32 object)
     }
     //send a nice message to all :)
     char buf[256];
-    sprintf(buf, GetSkyFireString((IsTower(node)) ? LANG_BG_AV_TOWER_DEFENDED : LANG_BG_AV_GRAVE_DEFENDED), GetNodeName(node),
+    snprintf(buf, sizeof(buf), GetSkyFireString((IsTower(node)) ? LANG_BG_AV_TOWER_DEFENDED : LANG_BG_AV_GRAVE_DEFENDED), GetNodeName(node),
             (team == ALLIANCE) ?  GetSkyFireString(LANG_BG_AV_ALLY) : GetSkyFireString(LANG_BG_AV_HORDE));
     Creature* creature = GetBGCreature(AV_CPLACE_HERALD);
     if (creature)
@@ -1062,7 +1062,7 @@ void BattlegroundAV::EventPlayerAssaultsPoint(Player* player, uint32 object)
 
     //send a nice message to all :)
     char buf[256];
-    sprintf(buf, (IsTower(node)) ? GetSkyFireString(LANG_BG_AV_TOWER_ASSAULTED) : GetSkyFireString(LANG_BG_AV_GRAVE_ASSAULTED), GetNodeName(node),
+    snprintf(buf, sizeof(buf), (IsTower(node)) ? GetSkyFireString(LANG_BG_AV_TOWER_ASSAULTED) : GetSkyFireString(LANG_BG_AV_GRAVE_ASSAULTED), GetNodeName(node),
             (team == ALLIANCE) ?  GetSkyFireString(LANG_BG_AV_ALLY) : GetSkyFireString(LANG_BG_AV_HORDE));
     Creature* creature = GetBGCreature(AV_CPLACE_HERALD);
     if (creature)

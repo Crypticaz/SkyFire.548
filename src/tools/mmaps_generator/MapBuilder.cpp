@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2016 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -37,13 +37,13 @@ namespace DisableMgr
 }
 
 #define MMAP_MAGIC 0x4d4d4150   // 'MMAP'
-#define MMAP_VERSION 5
+#define MMAP_VERSION 5.2f
 
 struct MmapTileHeader
 {
     uint32 mmapMagic;
     uint32 dtVersion;
-    uint32 mmapVersion;
+    float mmapVersion;
     uint32 size;
     bool usesLiquids : 1;
 
@@ -123,7 +123,7 @@ namespace MMAP
 
             files.clear();
             char filter[13];
-            sprintf(filter, "%04u*.vmtile", mapID);
+            snprintf(filter, sizeof(filter), "%04u*.vmtile", mapID);
             getDirContents(files, "vmaps", filter);
             for (uint32 i = 0; i < files.size(); ++i)
             {
@@ -136,7 +136,7 @@ namespace MMAP
             }
 
             files.clear();
-            sprintf(filter, "%04u*", mapID);
+            snprintf(filter, sizeof(filter), "%04u*", mapID);
             getDirContents(files, "maps", filter);
             for (uint32 i = 0; i < files.size(); ++i)
             {
@@ -164,7 +164,7 @@ namespace MMAP
     }
 
     /**************************************************************************/
-    void MapBuilder::buildAllMaps(int threads)
+    void MapBuilder::buildAllMaps(unsigned int threads)
     {
         std::vector<BuilderThread*> _threads;
 
@@ -182,9 +182,13 @@ namespace MMAP
             }
         }
 
-        for (int i = 0; i < threads; ++i)
+        printf("Using %u threads to extract mmaps\n", threads);
+        
+        for (unsigned int i = 0; i < threads; ++i)
+        {
             _threads.push_back(new BuilderThread(this, pool->Queue()));
-
+        }
+            
         // Free memory
         for (std::vector<BuilderThread*>::iterator _th = _threads.begin(); _th != _threads.end(); ++_th)
         {
@@ -454,14 +458,14 @@ namespace MMAP
         }
 
         char fileName[25];
-        sprintf(fileName, "mmaps/%04u.mmap", mapID);
+        snprintf(fileName, sizeof(fileName), "mmaps/%04u.mmap", mapID);
 
         FILE* file = fopen(fileName, "wb");
         if (!file)
         {
             dtFreeNavMesh(navMesh);
             char message[1024];
-            sprintf(message, "[Map %04u] Failed to open %s for writing!\n", mapID, fileName);
+            snprintf(message, sizeof(message), "[Map %04u] Failed to open %s for writing!\n", mapID, fileName);
             perror(message);
             return;
         }
@@ -478,7 +482,7 @@ namespace MMAP
     {
         // console output
         char tileString[25];
-        sprintf(tileString, "[Map %04u] [%02i,%02i]: ", mapID, tileX, tileY);
+        snprintf(tileString, sizeof(tileString), "[Map %04u] [%02i,%02i]: ", mapID, tileX, tileY);
         printf("%s Building movemap tiles...\n", tileString);
 
         IntermediateValues iv;
@@ -781,12 +785,12 @@ namespace MMAP
 
             // file output
             char fileName[255];
-            sprintf(fileName, "mmaps/%04u_%02i_%02i.mmtile", mapID, tileY, tileX);
+            snprintf(fileName, sizeof(fileName), "mmaps/%04u_%02i_%02i.mmtile", mapID, tileY, tileX);
             FILE* file = fopen(fileName, "wb");
             if (!file)
             {
                 char message[1024];
-                sprintf(message, "[Map %04u] Failed to open %s for writing!\n", mapID, fileName);
+                snprintf(message, sizeof(message), "[Map %04u] Failed to open %s for writing!\n", mapID, fileName);
                 perror(message);
                 navMesh->removeTile(tileRef, NULL, NULL);
                 continue;
@@ -873,12 +877,14 @@ namespace MMAP
                 case 605:   // development_nonweighted.wdt
                 case 606:   // QA_DVD.wdt
                 case 627:   // unused.wdt
+                case 651:   // ElevatorSpawnTest.wdt
                 case 930:   // (UNUSED) Scenario: Alcaz Island
                 case 995:   // The Depths [UNUSED]
                 case 1014:  // (UNUSED) Peak of Serenity Scenario
                 case 1028:  // (UNUSED) Scenario: Mogu Ruins
                 case 1029:  // (UNUSED) Scenario: Mogu Crypt
                 case 1049:  // (UNUSED) Scenario: Black Ox Temple
+                case 1060:  // LevelDesignLand-DevOnly.wdt
                     return true;
                 default:
                     if (isTransportMap(mapID))
@@ -889,22 +895,22 @@ namespace MMAP
         if (m_skipBattlegrounds)
             switch (mapID)
             {
-                case 30:    // AV
-                case 37:    // AC
-                case 489:   // WSG
-                case 529:   // AB
-                case 566:   // EotS
-                case 607:   // SotA
-                case 628:   // IoC
-                case 726:   // TP
-                case 727:   // SM
-                case 728:   // BfG
-                case 761:   // BfG2
-                case 968:   // EotS2
-                case 998:   // VOP
-                case 1010:  // CTF3
-                case 1101:  // DOTA
-                case 1105:  // GR
+                case 30:    // Alterac Valley
+                case 37:    // Azshara Crater
+                case 489:   // Warsong Gulch
+                case 529:   // Arathi Basin
+                case 566:   // Eye of the Storm
+                case 607:   // Strand of the Ancients
+                case 628:   // Isle of Conquest
+                case 726:   // Twin Peaks
+                case 727:   // Silvershard Mines
+                case 728:   // The Battle for Gilneas (Old Map)
+                case 761:   // The Battle for Gilneas
+                case 968:   // Rated Eye of the Storm
+                case 998:   // Temple of Kotmogu
+                case 1010:  // Mists of Pandaria CTF3
+                case 1101:  // DefenseOfTheAleHouseBG
+                case 1105:  // Deepwind Gorge
                     return true;
                 default:
                     break;
@@ -918,7 +924,7 @@ namespace MMAP
     {
         switch (mapID)
         {
-            // transport maps
+            // Transport maps
             case 582:  // Transport: Rut'theran to Auberdine
             case 584:  // Transport: Menethil to Theramore
             case 586:  // Transport: Exodar to Auberdine
@@ -968,6 +974,8 @@ namespace MMAP
             case 1113: // Transport: DarkmoonCarousel
             case 1132: // Transport218599 - The Skybag (Brawl'gar Arena)
             case 1133: // Transport218600 - Zandalari Ship (Mogu Island)
+            case 1172: // Transport_Siege_of_Orgrimmar_Alliance - Transport: Siege of Orgrimmar (Alliance)
+            case 1173: // Transport_Siege_of_Orgrimmar_Horde - Transport: Siege of Orgrimmar (Horde)
                 return true;
             default:
                 return false;
@@ -978,7 +986,7 @@ namespace MMAP
     bool MapBuilder::shouldSkipTile(uint32 mapID, uint32 tileX, uint32 tileY)
     {
         char fileName[255];
-        sprintf(fileName, "mmaps/%04u_%02i_%02i.mmtile", mapID, tileY, tileX);
+        snprintf(fileName, sizeof(fileName), "mmaps/%04u_%02i_%02i.mmtile", mapID, tileY, tileX);
         FILE* file = fopen(fileName, "rb");
         if (!file)
             return false;

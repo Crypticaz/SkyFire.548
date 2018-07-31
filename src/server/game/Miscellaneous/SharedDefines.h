@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -886,6 +886,7 @@ enum Team
 {
     HORDE               = 67,
     ALLIANCE            = 469,
+    PANDAREN_NEUTRAL    = 1249,                             // Pandaren is neutral on start
     //TEAM_STEAMWHEEDLE_CARTEL = 169,                       // not used in code
     //TEAM_ALLIANCE_FORCES     = 891,
     //TEAM_HORDE_FORCES        = 892,
@@ -4270,13 +4271,13 @@ enum PartyResult
 };
 
 const uint32 MMAP_MAGIC = 0x4d4d4150; // 'MMAP'
-#define MMAP_VERSION 5
+#define MMAP_VERSION 5.2f
 
 struct MmapTileHeader
 {
     uint32 mmapMagic;
     uint32 dtVersion;
-    uint32 mmapVersion;
+    float mmapVersion;
     uint32 size;
     bool usesLiquids : 1;
 

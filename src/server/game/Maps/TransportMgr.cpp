@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -345,7 +345,7 @@ Transport* TransportMgr::CreateTransport(uint32 entry, uint32 guid /*= 0*/, Map*
     if (map)
     {
         // SetZoneScript() is called after adding to map, so fetch the script using map
-        if (map->IsDungeon())
+        if (map->IsInstance())
             if (InstanceScript* instance = static_cast<InstanceMap*>(map)->GetInstanceScript())
                 entry = instance->GetGameObjectEntry(0, entry);
 
@@ -391,7 +391,7 @@ Transport* TransportMgr::CreateTransport(uint32 entry, uint32 guid /*= 0*/, Map*
 
     // use preset map for instances (need to know which instance)
     trans->SetMap(map ? map : sMapMgr->CreateMap(mapId, NULL));
-    if (map && map->IsDungeon())
+    if (map && map->IsInstance())
         trans->m_zoneScript = map->ToInstanceMap()->GetInstanceScript();
 
     // Passengers will be loaded once a player is near

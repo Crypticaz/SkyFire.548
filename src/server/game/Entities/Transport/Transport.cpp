@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -34,7 +34,7 @@
 #include "CellImpl.h"
 
 Transport::Transport() : GameObject(),
-    _transportInfo(NULL), _isMoving(true), _pendingStop(false)
+    _transportInfo(NULL), _isMoving(true), _pendingStop(false), _triggeredArrivalEvent(false), _triggeredDepartureEvent(false)
 {
     m_updateFlag = UPDATEFLAG_TRANSPORT | UPDATEFLAG_LOWGUID | UPDATEFLAG_STATIONARY_POSITION | UPDATEFLAG_ROTATION;
 }
@@ -96,6 +96,7 @@ bool Transport::Create(uint32 guidlow, uint32 entry, uint32 mapid, float x, floa
     SetGoAnimProgress(animprogress);
     SetName(goinfo->name);
     UpdateRotationFields(0.0f, 1.0f);
+    m_model = CreateModel();
     return true;
 }
 
@@ -194,6 +195,9 @@ void Transport::Update(uint32 diff)
 
 void Transport::AddPassenger(WorldObject* passenger)
 {
+    if (!IsInWorld())
+        return;
+
     if (_passengers.insert(passenger).second)
     {
         SF_LOG_DEBUG("entities.transport", "Object %s boarded transport %s.", passenger->GetName().c_str(), GetName().c_str());
@@ -305,6 +309,7 @@ void Transport::UpdatePosition(float x, float y, float z, float o)
     bool newActive = GetMap()->IsGridLoaded(x, y);
 
     Relocate(x, y, z, o);
+    UpdateModelPosition();
 
     UpdatePassengerPositions(_passengers);
 
@@ -476,6 +481,7 @@ bool Transport::TeleportTransport(uint32 newMapid, float x, float y, float z)
         }
 
         Relocate(x, y, z, GetOrientation());
+        UpdateModelPosition();
         GetMap()->AddToMap<Transport>(this);
         return true;
     }

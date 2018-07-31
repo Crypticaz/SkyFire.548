@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -416,7 +416,7 @@ void WorldSession::HandleCorpseQueryOpcode(WorldPacket& /*recvData*/)
         // search entrance map for proper show entrance
         if (MapEntry const* corpseMapEntry = sMapStore.LookupEntry(mapId))
         {
-            if (corpseMapEntry->IsDungeon() && corpseMapEntry->entrance_map >= 0)
+            if (corpseMapEntry->IsInstance() && corpseMapEntry->entrance_map >= 0)
             {
                 // if corpse map have entrance
                 if (Map const* entranceMap = sMapMgr->CreateBaseMap(corpseMapEntry->entrance_map))

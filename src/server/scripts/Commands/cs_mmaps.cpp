@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -43,22 +43,20 @@ class mmaps_commandscript : public CommandScript
 public:
     mmaps_commandscript() : CommandScript("mmaps_commandscript") { }
 
-    ChatCommand* GetCommands() const OVERRIDE
+    std::vector<ChatCommand> GetCommands() const OVERRIDE
     {
-        static ChatCommand mmapCommandTable[] =
+        static std::vector<ChatCommand> mmapCommandTable =
         {
-            { "loadedtiles", rbac::RBAC_PERM_COMMAND_MMAP_LOADEDTILES, false, &HandleMmapLoadedTilesCommand, "", NULL },
-            { "loc",         rbac::RBAC_PERM_COMMAND_MMAP_LOC,         false, &HandleMmapLocCommand,         "", NULL },
-            { "path",        rbac::RBAC_PERM_COMMAND_MMAP_PATH,        false, &HandleMmapPathCommand,        "", NULL },
-            { "stats",       rbac::RBAC_PERM_COMMAND_MMAP_STATS,       false, &HandleMmapStatsCommand,       "", NULL },
-            { "testarea",    rbac::RBAC_PERM_COMMAND_MMAP_TESTAREA,    false, &HandleMmapTestArea,           "", NULL },
-            { NULL,          0,                                  false, NULL,                          "", NULL }
+            { "loadedtiles", rbac::RBAC_PERM_COMMAND_MMAP_LOADEDTILES, false, &HandleMmapLoadedTilesCommand, "", },
+            { "loc",         rbac::RBAC_PERM_COMMAND_MMAP_LOC,         false, &HandleMmapLocCommand,         "", },
+            { "path",        rbac::RBAC_PERM_COMMAND_MMAP_PATH,        false, &HandleMmapPathCommand,        "", },
+            { "stats",       rbac::RBAC_PERM_COMMAND_MMAP_STATS,       false, &HandleMmapStatsCommand,       "", },
+            { "testarea",    rbac::RBAC_PERM_COMMAND_MMAP_TESTAREA,    false, &HandleMmapTestArea,           "", },
         };
 
-        static ChatCommand commandTable[] =
+        static std::vector<ChatCommand> commandTable =
         {
             { "mmap", rbac::RBAC_PERM_COMMAND_MMAP, true, NULL, "", mmapCommandTable  },
-            { NULL,   0,                     false, NULL, "", NULL }
         };
         return commandTable;
     }
@@ -129,7 +127,7 @@ public:
         int32 gx = 32 - player->GetPositionX() / SIZE_OF_GRIDS;
         int32 gy = 32 - player->GetPositionY() / SIZE_OF_GRIDS;
 
-        handler->PSendSysMessage("%03u%02i%02i.mmtile", player->GetMapId(), gy, gx);
+        handler->PSendSysMessage("%04u_%02i_%02i.mmtile", player->GetMapId(), gy, gx);
         handler->PSendSysMessage("gridloc [%i, %i]", gx, gy);
 
         // calculate navmesh tile location

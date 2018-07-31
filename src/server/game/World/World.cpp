@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -785,6 +785,8 @@ void World::LoadConfigSettings(bool reload)
         m_int_configs[CONFIG_START_HEROIC_PLAYER_LEVEL] = m_int_configs[CONFIG_MAX_PLAYER_LEVEL];
     }
 
+	m_int_configs[CONFIG_START_PETBAR_LEVEL] = sConfigMgr->GetIntDefault("StartPetbarLevel", 10);
+
     m_int_configs[CONFIG_START_PLAYER_MONEY] = sConfigMgr->GetIntDefault("StartPlayerMoney", 0);
     if (int32(m_int_configs[CONFIG_START_PLAYER_MONEY]) < 0)
     {
@@ -1346,7 +1348,7 @@ void World::LoadConfigSettings(bool reload)
         sScriptMgr->OnConfigLoad(reload);
 }
 
-extern void LoadGameObjectModelList();
+extern void LoadGameObjectModelList(std::string const& dataPath);
 
 /// Initialize the World
 void World::SetInitialWorldSettings()
@@ -1432,7 +1434,7 @@ void World::SetInitialWorldSettings()
     sSpellMgr->LoadSpellInfoCustomAttributes();
 
     SF_LOG_INFO("server.loading", "Loading GameObject models...");
-    LoadGameObjectModelList();
+    LoadGameObjectModelList(m_dataPath);
 
     SF_LOG_INFO("server.loading", "Loading Script Names...");
     sObjectMgr->LoadScriptNames();
@@ -1499,9 +1501,6 @@ void World::SetInitialWorldSettings()
 
     SF_LOG_INFO("server.loading", "Loading Spell Group Stack Rules...");
     sSpellMgr->LoadSpellGroupStackRules();
-
-    SF_LOG_INFO("server.loading", "Loading Spell Phase Dbc Info...");
-    sObjectMgr->LoadSpellPhaseInfo();
 
     SF_LOG_INFO("server.loading", "Loading NPC Texts...");
     sObjectMgr->LoadGossipText();
@@ -1768,8 +1767,17 @@ void World::SetInitialWorldSettings()
     SF_LOG_INFO("server.loading", "Loading World States...");              // must be loaded before battleground, outdoor PvP and conditions
     LoadWorldStates();
 
-    SF_LOG_INFO("server.loading", "Loading Phase definitions...");
-    sObjectMgr->LoadPhaseDefinitions();
+    SF_LOG_INFO("server.loading", "Loading Terrain Phase definitions...");
+    sObjectMgr->LoadTerrainPhaseInfo();
+
+    SF_LOG_INFO("server.loading", "Loading Terrain Swap Default definitions...");
+    sObjectMgr->LoadTerrainSwapDefaults();
+
+    SF_LOG_INFO("server.loading", "Loading Terrain World Map definitions...");
+    sObjectMgr->LoadTerrainWorldMaps();
+
+    SF_LOG_INFO("server.loading", "Loading Phase Area definitions...");
+    sObjectMgr->LoadAreaPhases();
 
     SF_LOG_INFO("server.loading", "Loading Conditions...");
     sConditionMgr->LoadConditions();
@@ -1838,14 +1846,14 @@ void World::SetInitialWorldSettings()
     SF_LOG_INFO("server.loading", "Loading Calendar data...");
     sCalendarMgr->LoadFromDB();
 
-    SF_LOG_INFO("server.loading", "Loading Research Digsite info...");
-    sObjectMgr->LoadResearchDigsiteInfo();
+    //SF_LOG_INFO("server.loading", "Loading Research Digsite info...");
+    //sObjectMgr->LoadResearchDigsiteInfo();
 
-    SF_LOG_INFO("server.loading", "Loading Archaeology Find info...");
-    sObjectMgr->LoadArchaeologyFindInfo();
+    //SF_LOG_INFO("server.loading", "Loading Archaeology Find info...");
+    //sObjectMgr->LoadArchaeologyFindInfo();
 
-    SF_LOG_INFO("server.loading", "Loading Research Project requirements...");
-    sObjectMgr->LoadResearchProjectRequirements();
+    //SF_LOG_INFO("server.loading", "Loading Research Project requirements...");
+    //sObjectMgr->LoadResearchProjectRequirements();
 
     SF_LOG_INFO("server.loading", "Loading Battle Pet breed data...");
     sObjectMgr->LoadBattlePetBreedData();
@@ -3375,14 +3383,6 @@ CharacterNameData const* World::GetCharacterNameData(uint32 guid) const
         return &itr->second;
     else
         return NULL;
-}
-
-void World::UpdatePhaseDefinitions()
-{
-    SessionMap::const_iterator itr;
-    for (itr = m_sessions.begin(); itr != m_sessions.end(); ++itr)
-        if (itr->second && itr->second->GetPlayer() && itr->second->GetPlayer()->IsInWorld())
-            itr->second->GetPlayer()->GetPhaseMgr().NotifyStoresReloaded();
 }
 
 void World::ReloadRBAC()

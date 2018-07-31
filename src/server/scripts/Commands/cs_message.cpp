@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -36,29 +36,26 @@ class message_commandscript : public CommandScript
 public:
     message_commandscript() : CommandScript("message_commandscript") { }
 
-    ChatCommand* GetCommands() const
+    std::vector<ChatCommand> GetCommands() const
     {
-        static ChatCommand channelSetCommandTable[] =
+        static std::vector<ChatCommand> channelSetCommandTable =
         {
-            { "ownership", rbac::RBAC_PERM_COMMAND_CHANNEL_SET_OWNERSHIP, false, &HandleChannelSetOwnership, "", NULL },
-            { NULL,        0,                                       false, NULL,                       "", NULL }
+            { "ownership", rbac::RBAC_PERM_COMMAND_CHANNEL_SET_OWNERSHIP, false, &HandleChannelSetOwnership, "", },
         };
-        static ChatCommand channelCommandTable[] =
+        static std::vector<ChatCommand> channelCommandTable =
         {
             { "set", rbac::RBAC_PERM_COMMAND_CHANNEL_SET, true, NULL, "", channelSetCommandTable },
-            { NULL,  0,                            false, NULL, "", NULL }
         };
-        static ChatCommand commandTable[] =
+        static std::vector<ChatCommand> commandTable =
         {
             { "channel",        rbac::RBAC_PERM_COMMAND_CHANNEL,        true, NULL,                         "", channelCommandTable  },
-            { "nameannounce",   rbac::RBAC_PERM_COMMAND_NAMEANNOUNCE,   true, &HandleNameAnnounceCommand,   "", NULL },
-            { "gmnameannounce", rbac::RBAC_PERM_COMMAND_GMNAMEANNOUNCE, true, &HandleGMNameAnnounceCommand, "", NULL },
-            { "announce",       rbac::RBAC_PERM_COMMAND_ANNOUNCE,       true, &HandleAnnounceCommand,       "", NULL },
-            { "gmannounce",     rbac::RBAC_PERM_COMMAND_GMANNOUNCE,     true, &HandleGMAnnounceCommand,     "", NULL },
-            { "notify",         rbac::RBAC_PERM_COMMAND_NOTIFY,         true, &HandleNotifyCommand,         "", NULL },
-            { "gmnotify",       rbac::RBAC_PERM_COMMAND_GMNOTIFY,       true, &HandleGMNotifyCommand,       "", NULL },
-            { "whispers",       rbac::RBAC_PERM_COMMAND_WHISPERS,      false, &HandleWhispersCommand,       "", NULL },
-            { NULL,             0,                               false, NULL,                         "", NULL }
+            { "nameannounce",   rbac::RBAC_PERM_COMMAND_NAMEANNOUNCE,   true, &HandleNameAnnounceCommand,   "", },
+            { "gmnameannounce", rbac::RBAC_PERM_COMMAND_GMNAMEANNOUNCE, true, &HandleGMNameAnnounceCommand, "", },
+            { "announce",       rbac::RBAC_PERM_COMMAND_ANNOUNCE,       true, &HandleAnnounceCommand,       "", },
+            { "gmannounce",     rbac::RBAC_PERM_COMMAND_GMANNOUNCE,     true, &HandleGMAnnounceCommand,     "", },
+            { "notify",         rbac::RBAC_PERM_COMMAND_NOTIFY,         true, &HandleNotifyCommand,         "", },
+            { "gmnotify",       rbac::RBAC_PERM_COMMAND_GMNOTIFY,       true, &HandleGMNotifyCommand,       "", },
+            { "whispers",       rbac::RBAC_PERM_COMMAND_WHISPERS,      false, &HandleWhispersCommand,       "", },
         };
         return commandTable;
     }
@@ -137,7 +134,7 @@ public:
             return false;
 
         char buff[2048];
-        sprintf(buff, handler->GetSkyFireString(LANG_SYSTEMMESSAGE), args);
+        snprintf(buff, sizeof(buff), handler->GetSkyFireString(LANG_SYSTEMMESSAGE), args);
         sWorld->SendServerMessage(SERVER_MSG_STRING, buff);
         return true;
     }

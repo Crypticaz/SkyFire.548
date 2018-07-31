@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -279,8 +279,8 @@ class Object
 
         // for output helpfull error messages from asserts
         bool PrintIndexError(uint32 index, bool set) const;
-        Object(const Object&);                              // prevent generation copy constructor
-        Object& operator=(Object const&);                   // prevent generation assigment operator
+        Object(Object const& right) = delete;
+        Object & operator=(Object const& right) = delete;
 };
 
 struct Position
@@ -518,6 +518,7 @@ template<class T>
 class GridObject
 {
     public:
+        virtual ~GridObject() { }
         bool IsInGrid() const { return _gridRef.isValid(); }
         void AddToGrid(GridRefManager<T>& m) { ASSERT(!IsInGrid()); _gridRef.link(&m, (T*)this); }
         void RemoveFromGrid() { ASSERT(IsInGrid()); _gridRef.unlink(); }
@@ -562,7 +563,7 @@ class MapObject
         friend class ObjectGridLoader; //grid loader for loading creatures
 
     protected:
-        MapObject() : _moveState(MAP_OBJECT_CELL_MOVE_NONE) { }
+        MapObject() : _moveState(MAP_OBJECT_CELL_MOVE_NONE) { _newPosition.Relocate(0.0f, 0.0f, 0.0f, 0.0f); }
 
     private:
         Cell _currentCell;
@@ -610,7 +611,20 @@ class WorldObject : public Object, public WorldLocation
         uint32 GetInstanceId() const { return m_InstanceId; }
 
         virtual void SetPhaseMask(uint32 newPhaseMask, bool update);
+        virtual bool SetPhased(uint32 id, bool update, bool apply);
+        bool HasPhaseList(uint32 phase);
         uint32 GetPhaseMask() const { return m_phaseMask; }
+        void ClearPhases(bool update = false);
+        bool IsPhased(WorldObject const* obj) const;
+        bool IsPhased(uint32 phase) const { return _phases.find(phase) != _phases.end(); }
+        std::set<uint32> const& GetPhases() const { return _phases; }
+        bool IsTerrainSwaped(uint32 terrainSwap) const { return _terrainSwaps.find(terrainSwap) != _terrainSwaps.end(); }
+        std::set<uint32> const& GetTerrainSwaps() const { return _terrainSwaps; }
+        std::set<uint32> const& GetWorldMapSwaps() const { return _worldMapSwaps; }
+        void RebuildTerrainSwaps();
+        void RebuildWorldMapAreaSwaps();
+        void UpdateAreaPhase();
+
         bool InSamePhase(WorldObject const* obj) const;
         bool InSamePhase(uint32 phasemask) const { return (GetPhaseMask() & phasemask); }
 
@@ -796,6 +810,9 @@ class WorldObject : public Object, public WorldLocation
         //uint32 m_mapId;                                     // object at map with map_id
         uint32 m_InstanceId;                                // in map copy with instance id
         uint32 m_phaseMask;                                 // in area phase state
+        std::set<uint32> _phases;
+        std::set<uint32> _terrainSwaps;
+        std::set<uint32> _worldMapSwaps;
 
         uint16 m_notifyflags;
         uint16 m_executed_notifies;

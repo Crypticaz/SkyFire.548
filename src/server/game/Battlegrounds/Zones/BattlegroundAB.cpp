@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -225,13 +225,13 @@ void BattlegroundAB::HandleAreaTrigger(Player* player, uint32 trigger)
     {
         case 3948:                                          // Arathi Basin Alliance Exit.
             if (player->GetTeam() != ALLIANCE)
-                player->GetSession()->SendAreaTriggerMessage("Only The Alliance can use that portal");
+                player->GetSession()->SendNotification("Only The Alliance can use that portal");
             else
                 player->LeaveBattleground();
             break;
         case 3949:                                          // Arathi Basin Horde Exit.
             if (player->GetTeam() != HORDE)
-                player->GetSession()->SendAreaTriggerMessage("Only The Horde can use that portal");
+                player->GetSession()->SendNotification("Only The Horde can use that portal");
             else
                 player->LeaveBattleground();
             break;

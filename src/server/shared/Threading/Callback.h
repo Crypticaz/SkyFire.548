@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -111,6 +111,8 @@ class QueryCallback
         ACE_Future<Result> _result;
         ParamType _param;
         uint8 _stage;
+        QueryCallback(QueryCallback const& right) = delete;
+        QueryCallback & operator=(QueryCallback const& right) = delete;
 };
 
 template <typename Result, typename ParamType1, typename ParamType2, bool chain = false>
@@ -203,6 +205,8 @@ class QueryCallback_2
         ParamType1 _param_1;
         ParamType2 _param_2;
         uint8 _stage;
+        QueryCallback_2(QueryCallback_2 const& right) = delete;
+        QueryCallback_2 & operator=(QueryCallback_2 const& right) = delete;
 };
 
 #endif

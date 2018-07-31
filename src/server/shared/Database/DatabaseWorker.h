@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -20,6 +20,7 @@
 #ifndef _WORKERTHREAD_H
 #define _WORKERTHREAD_H
 
+#include "Define.h"
 #include <ace/Task.h>
 #include <ace/Activation_Queue.h>
 
@@ -35,9 +36,10 @@ class DatabaseWorker : protected ACE_Task_Base
         int wait() { return ACE_Task_Base::wait(); }
 
     private:
-        DatabaseWorker() : ACE_Task_Base() { }
         ACE_Activation_Queue* m_queue;
         MySQLConnection* m_conn;
+        DatabaseWorker(DatabaseWorker const& right) = delete;
+        DatabaseWorker & operator=(DatabaseWorker const& right) = delete;
 };
 
 #endif

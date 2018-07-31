@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -47,13 +47,13 @@ namespace Movement
 
     float computeFallTime(float path_length, bool isSafeFall);
     float computeFallElevation(float t_passed, bool isSafeFall, float start_velocity = 0.0f);
-
+/*
 #ifndef static_assert
     #define CONCAT(x, y) CONCAT1 (x, y)
     #define CONCAT1(x, y) x##y
     #define static_assert(expr, msg) typedef char CONCAT(static_assert_failed_at_line_, __LINE__) [(expr) ? 1 : -1]
 #endif
-
+*/
     template<class T, T limit>
     class counter
     {

@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -339,7 +339,7 @@ pAuraEffectHandler AuraEffectHandler[TOTAL_AURAS]=
     &AuraEffect::HandleUnused,                                    //277 unused (4.3.4) old SPELL_AURA_MOD_MAX_AFFECTED_TARGETS
     &AuraEffect::HandleAuraModDisarm,                             //278 SPELL_AURA_MOD_DISARM_RANGED disarm ranged weapon
     &AuraEffect::HandleNoImmediateEffect,                         //279 SPELL_AURA_INITIALIZE_IMAGES
-    &AuraEffect::HandleUnused,                                    //280 unused (4.3.4) old SPELL_AURA_MOD_ARMOR_PENETRATION_PCT
+    &AuraEffect::HandleNoImmediateEffect,                         //280 SPELL_AURA_MOD_ARMOR_PENETRATION_PCT (used in 5.4.8)
     &AuraEffect::HandleNoImmediateEffect,                         //281 SPELL_AURA_MOD_HONOR_GAIN_PCT implemented in Player::RewardHonor
     &AuraEffect::HandleAuraIncreaseBaseHealthPercent,             //282 SPELL_AURA_INCREASE_BASE_HEALTH_PERCENT
     &AuraEffect::HandleNoImmediateEffect,                         //283 SPELL_AURA_MOD_HEALING_RECEIVED       implemented in Unit::SpellHealingBonus
@@ -385,7 +385,7 @@ pAuraEffectHandler AuraEffectHandler[TOTAL_AURAS]=
     &AuraEffect::HandleUnused,                                    //323 unused (4.3.4)
     &AuraEffect::HandleNULL,                                      //324 SPELL_AURA_324
     &AuraEffect::HandleUnused,                                    //325 unused (4.3.4)
-    &AuraEffect::HandleNULL,                                      //326 SPELL_AURA_326
+    &AuraEffect::HandlePhaseGroup,                                //326 SPELL_AURA_PHASE_GROUP
     &AuraEffect::HandleUnused,                                    //327 unused (4.3.4)
     &AuraEffect::HandleNoImmediateEffect,                         //328 SPELL_AURA_PROC_ON_POWER_AMOUNT implemented in Unit::HandleAuraProcOnPowerAmount
     &AuraEffect::HandleNULL,                                      //329 SPELL_AURA_MOD_RUNE_REGEN_SPEED
@@ -1689,31 +1689,7 @@ void AuraEffect::HandlePhase(AuraApplication const* aurApp, uint8 mode, bool app
 
     Unit* target = aurApp->GetTarget();
 
-    if (Player* player = target->ToPlayer())
-    {
-        if (apply)
-            player->GetPhaseMgr().RegisterPhasingAuraEffect(this);
-        else
-            player->GetPhaseMgr().UnRegisterPhasingAuraEffect(this);
-    }
-    else
-    {
-        uint32 newPhase = 0;
-        Unit::AuraEffectList const& phases = target->GetAuraEffectsByType(SPELL_AURA_PHASE);
-        if (!phases.empty())
-            for (Unit::AuraEffectList::const_iterator itr = phases.begin(); itr != phases.end(); ++itr)
-                newPhase |= (*itr)->GetMiscValue();
-
-        if (!newPhase)
-        {
-            newPhase = PHASEMASK_NORMAL;
-            if (Creature* creature = target->ToCreature())
-                if (CreatureData const* data = sObjectMgr->GetCreatureData(creature->GetDBTableGUIDLow()))
-                    newPhase = data->phaseMask;
-        }
-
-        target->SetPhaseMask(newPhase, false);
-    }
+    target->SetPhased(GetMiscValueB(), false, apply);
 
     // call functions which may have additional effects after chainging state of unit
     // phase auras normally not expected at BG but anyway better check
@@ -1722,6 +1698,35 @@ void AuraEffect::HandlePhase(AuraApplication const* aurApp, uint8 mode, bool app
         // drop flag at invisibiliy in bg
         target->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_IMMUNE_OR_LOST_SELECTION);
     }
+
+    if (Player* player = target->ToPlayer())
+        player->UpdatePhasing();
+    // need triggering visibility update base at phase update of not GM invisible (other GMs anyway see in any phases)
+    if (target->IsVisible())
+        target->UpdateObjectVisibility();
+}
+
+void AuraEffect::HandlePhaseGroup(AuraApplication const* aurApp, uint8 mode, bool apply) const
+{
+    if (!(mode & AURA_EFFECT_HANDLE_REAL))
+        return;
+
+    Unit* target = aurApp->GetTarget();
+    
+    std::set<uint32> const& phases = GetPhasesForGroup(GetMiscValueB());
+    for (auto phase : phases)
+        target->SetPhased(phase, false, apply);
+
+    // call functions which may have additional effects after chainging state of unit
+    // phase auras normally not expected at BG but anyway better check
+    if (apply)
+    {
+        // drop flag at invisibiliy in bg
+        target->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_IMMUNE_OR_LOST_SELECTION);
+    }
+
+    if (Player* player = target->ToPlayer())
+        player->UpdatePhasing();
 
     // need triggering visibility update base at phase update of not GM invisible (other GMs anyway see in any phases)
     if (target->IsVisible())
@@ -4771,7 +4776,7 @@ void AuraEffect::HandleAuraDummy(AuraApplication const* aurApp, uint8 mode, bool
                         }
                         case 44191:                                     // Flame Strike
                         {
-                            if (target->GetMap()->IsDungeon())
+                            if (target->GetMap()->IsInstance())
                             {
                                 uint32 spellId = target->GetMap()->IsHeroic() ? 46163 : 44190;
 

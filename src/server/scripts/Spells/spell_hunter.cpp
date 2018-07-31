@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -34,6 +34,12 @@
 
 enum HunterSpells
 {
+    SPELL_HUNTER_A_MURDER_OF_CROWS                  = 131894,
+    SPELL_HUNTER_CROW_TRIGGER                       = 131951,
+    SPELL_HUNTER_DELAYED_CROW                       = 131637,
+    SPELL_HUNTER_DELAYED_CROW2                      = 131952,
+    SPELL_HUNTER_CROW_DMG                           = 131900,
+
     SPELL_HUNTER_BESTIAL_WRATH                      = 19574,
     SPELL_HUNTER_CHIMERA_SHOT_HEAL                  = 53353,
     SPELL_HUNTER_FIRE                               = 82926,
@@ -56,6 +62,50 @@ enum HunterSpells
     SPELL_HUNTER_STEADY_SHOT_FOCUS                  = 77443,
     SPELL_HUNTER_THRILL_OF_THE_HUNT                 = 34720,
     SPELL_DRAENEI_GIFT_OF_THE_NAARU                 = 59543,
+};
+
+class spell_hun_a_murder_of_crows : public SpellScriptLoader
+{
+public:
+    spell_hun_a_murder_of_crows() : SpellScriptLoader("spell_hun_a_murder_of_crows") { }
+
+    class spell_hun_a_murder_of_crows_AuraScript : public AuraScript
+    {
+        PrepareAuraScript(spell_hun_a_murder_of_crows_AuraScript);
+
+        bool Validate(SpellInfo const* /*spellInfo*/) OVERRIDE
+        {
+            if (!sSpellMgr->GetSpellInfo(SPELL_HUNTER_A_MURDER_OF_CROWS))
+                return false;
+            return true;
+        }
+
+        void HandleEffectPeriodic(AuraEffect const* /*aurEff*/)
+        {
+            if (Unit* target = GetTarget())
+            {
+                if (Player* player = GetCaster()->ToPlayer())
+                {
+                    player->CastSpell(target, SPELL_HUNTER_CROW_TRIGGER, true); // crow trigger+visual + (Dummy: cdr at 20% target HP NYI)
+                    player->CastSpell(target, SPELL_HUNTER_CROW_DMG, true);
+                    player->CastSpell(target, SPELL_HUNTER_DELAYED_CROW, true);
+                    player->CastSpell(target, SPELL_HUNTER_CROW_DMG, true);
+                    player->CastSpell(target, SPELL_HUNTER_DELAYED_CROW2, true);
+                    player->CastSpell(target, SPELL_HUNTER_CROW_DMG, true);
+                }
+            }
+        }
+        
+        void Register() OVERRIDE
+        {
+            OnEffectPeriodic += AuraEffectPeriodicFn(spell_hun_a_murder_of_crows_AuraScript::HandleEffectPeriodic, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
+        }
+    };
+
+    AuraScript* GetAuraScript() const OVERRIDE
+    {
+        return new spell_hun_a_murder_of_crows_AuraScript();
+    }
 };
 
 // 53209 - Chimera Shot
@@ -1029,6 +1079,7 @@ class spell_hun_tnt : public SpellScriptLoader
 
 void AddSC_hunter_spell_scripts()
 {
+    new spell_hun_a_murder_of_crows();
     new spell_hun_chimera_shot();
     new spell_hun_cobra_shot();
     new spell_hun_disengage();

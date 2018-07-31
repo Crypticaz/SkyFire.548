@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -71,6 +71,9 @@ class SQLOperation : public ACE_Method_Request
         virtual void SetConnection(MySQLConnection* con) { m_conn = con; }
 
         MySQLConnection* m_conn;
+    private:
+        SQLOperation(SQLOperation const& right) = delete;
+        SQLOperation & operator=(SQLOperation const& right) = delete;
 };
 
 #endif

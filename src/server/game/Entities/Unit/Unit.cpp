@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -1510,6 +1510,13 @@ uint32 Unit::CalcArmorReducedDamage(Unit* victim, const uint32 damage, SpellInfo
     {
         if ((*j)->GetMiscValue() & SPELL_SCHOOL_MASK_NORMAL)
             armor = floor(AddPct(armor, -(*j)->GetAmount()));
+    }
+    
+    AuraEffectList const& ArPenAuras = GetAuraEffectsByType(SPELL_AURA_MOD_ARMOR_PENETRATION_PCT);
+    for (AuraEffectList::const_iterator k = ArPenAuras.begin(); k != ArPenAuras.end(); ++k)
+    {
+        if ((*k)->GetMiscValue() & SPELL_SCHOOL_MASK_NORMAL)
+            armor = floor(AddPct(armor, -(*k)->GetAmount()));
     }
 
     if (armor < 0.0f)
@@ -3742,7 +3749,7 @@ void Unit::RemoveAurasWithAttribute(uint32 flags)
     }
 }
 
-void Unit::RemoveNotOwnSingleTargetAuras(uint32 newPhase)
+void Unit::RemoveNotOwnSingleTargetAuras(uint32 newPhase, bool phaseid)
 {
     // single target auras from other casters
     for (AuraApplicationMap::iterator iter = m_appliedAuras.begin(); iter != m_appliedAuras.end();)
@@ -3752,12 +3759,12 @@ void Unit::RemoveNotOwnSingleTargetAuras(uint32 newPhase)
 
         if (aura->GetCasterGUID() != GetGUID() && aura->GetSpellInfo()->IsSingleTarget())
         {
-            if (!newPhase)
+            if (!newPhase && !phaseid)
                 RemoveAura(iter);
             else
             {
                 Unit* caster = aura->GetCaster();
-                if (!caster || !caster->InSamePhase(newPhase))
+                if (!caster || (newPhase && !caster->InSamePhase(newPhase)) || (!newPhase && !caster->IsPhased(this)))
                     RemoveAura(iter);
                 else
                     ++iter;
@@ -11974,6 +11981,18 @@ void Unit::SetHealth(uint32 val)
 
     SetUInt32Value(UNIT_FIELD_HEALTH, val);
 
+    if (IsInWorld())
+    {
+        ObjectGuid guid = GetGUID();
+
+        WorldPacket data(SMSG_HEALTH_UPDATE, 8 + 4);
+        data.WriteGuidMask(guid, 4, 3, 0, 2, 7, 5, 1, 6);
+        data.WriteGuidBytes(guid, 3, 1, 2, 4, 6);
+        data << int32(val);
+        data.WriteGuidBytes(guid, 7, 5, 0);
+        SendMessageToSet(&data, GetTypeId() == TYPEID_PLAYER);
+    }
+
     // group update
     if (Player* player = ToPlayer())
     {
@@ -12180,6 +12199,7 @@ void Unit::AddToWorld()
     {
         WorldObject::AddToWorld();
     }
+    RebuildTerrainSwaps();
 }
 
 void Unit::RemoveFromWorld()
@@ -12338,15 +12358,25 @@ void CharmInfo::InitPetActionBar()
 {
     // the first 3 SpellOrActions are attack, follow and stay
     for (uint32 i = 0; i < ACTION_BAR_INDEX_PET_SPELL_START - ACTION_BAR_INDEX_START; ++i)
-        SetActionBar(ACTION_BAR_INDEX_START + i, COMMAND_ATTACK - i, ACT_COMMAND);
+    {
+        if (i < 2)
+            SetActionBar(ACTION_BAR_INDEX_START + i, COMMAND_ATTACK - i, ACT_COMMAND);
+        else
+            SetActionBar(ACTION_BAR_INDEX_START + i, COMMAND_MOVE_TO, ACT_COMMAND);
+    }
 
     // middle 4 SpellOrActions are spells/special attacks/abilities
-    for (uint32 i = 0; i < ACTION_BAR_INDEX_PET_SPELL_END - ACTION_BAR_INDEX_PET_SPELL_START; ++i)
+    for (uint32 i = 0; i < ACTION_BAR_INDEX_PET_SPELL_END-ACTION_BAR_INDEX_PET_SPELL_START; ++i)
         SetActionBar(ACTION_BAR_INDEX_PET_SPELL_START + i, 0, ACT_PASSIVE);
 
     // last 3 SpellOrActions are reactions
     for (uint32 i = 0; i < ACTION_BAR_INDEX_END - ACTION_BAR_INDEX_PET_SPELL_END; ++i)
-        SetActionBar(ACTION_BAR_INDEX_PET_SPELL_END + i, COMMAND_ATTACK - i, ACT_REACTION);
+    {
+        if (i != 1)
+            SetActionBar(ACTION_BAR_INDEX_PET_SPELL_END + i, COMMAND_ATTACK - i, ACT_REACTION);
+        else
+            SetActionBar(ACTION_BAR_INDEX_PET_SPELL_END + i, REACT_ASSIST, ACT_REACTION);
+    }
 }
 
 void CharmInfo::InitEmptyActionBar(bool withAttack)
@@ -14187,7 +14217,7 @@ void Unit::Kill(Unit* victim, bool durabilityLoss)
             Player* creditedPlayer = GetCharmerOrOwnerPlayerOrPlayerItself();
             /// @todo do instance binding anyway if the charmer/owner is offline
 
-            if (instanceMap->IsDungeon() && creditedPlayer)
+            if (instanceMap->IsInstance() && creditedPlayer)
             {
                 if (instanceMap->IsRaidOrHeroicDungeon())
                 {
@@ -15157,6 +15187,62 @@ void Unit::SetPhaseMask(uint32 newPhaseMask, bool update)
                 summon->SetPhaseMask(newPhaseMask, true);
 }
 
+void Unit::ClearPhases(bool update)
+{
+    WorldObject::ClearPhases(update);
+}
+
+bool Unit::SetPhased(uint32 id, bool update, bool apply)
+{
+    bool res = WorldObject::SetPhased(id, update, apply);
+
+    if (!IsInWorld())
+        return res;
+
+    if (GetTypeId() == TYPEID_UNIT || (!ToPlayer()->IsGameMaster() && !ToPlayer()->GetSession()->PlayerLogout()))
+    {
+        HostileRefManager& refManager = getHostileRefManager();
+        HostileReference* ref = refManager.getFirst();
+
+        while (ref)
+        {
+            if (Unit* unit = ref->GetSource()->GetOwner())
+                if (Creature* creature = unit->ToCreature())
+                    refManager.setOnlineOfflineState(creature, creature->IsPhased(this));
+
+            ref = ref->next();
+        }
+
+        // modify threat lists for new phasemask
+        if (GetTypeId() != TYPEID_PLAYER)
+        {
+            std::list<HostileReference*> threatList = getThreatManager().getThreatList();
+            std::list<HostileReference*> offlineThreatList = getThreatManager().getOfflineThreatList();
+
+            // merge expects sorted lists
+            threatList.sort();
+            offlineThreatList.sort();
+            threatList.merge(offlineThreatList);
+
+            for (std::list<HostileReference*>::const_iterator itr = threatList.begin(); itr != threatList.end(); ++itr)
+                if (Unit* unit = (*itr)->getTarget())
+                    unit->getHostileRefManager().setOnlineOfflineState(ToCreature(), unit->IsPhased(this));
+        }
+    }
+
+    for (ControlList::const_iterator itr = m_Controlled.begin(); itr != m_Controlled.end(); ++itr)
+        if ((*itr)->GetTypeId() == TYPEID_UNIT)
+            (*itr)->SetPhased(id, true, apply);
+
+    for (uint8 i = 0; i < MAX_SUMMON_SLOT; ++i)
+        if (m_SummonSlot[i])
+            if (Creature* summon = GetMap()->GetCreature(m_SummonSlot[i]))
+                summon->SetPhased(id, true, apply);
+
+    RemoveNotOwnSingleTargetAuras(0, true);
+    return res;
+}
+
 void Unit::UpdateObjectVisibility(bool forced)
 {
     if (!forced)
@@ -15556,10 +15642,13 @@ uint32 Unit::GetModelForForm(ShapeshiftForm form) const
                     return 37730;
                 return 21244;
             case FORM_MOONKIN:
-                if (getRace() == RACE_TROLL)
-                    return 37174;
-                if (getRace() == RACE_WORGEN)
+                if (Player::TeamForRace(getRace()) == ALLIANCE)
                     return 37173;
+                return 37174;
+            case FORM_TRAVEL:
+                if (Player::TeamForRace(getRace()) == ALLIANCE)
+                    return 40816;
+                return 45339;
             case FORM_GHOSTWOLF:
                 if (HasAura(58135)) //! Glyph of Arctic Wolf
                     return 27312;

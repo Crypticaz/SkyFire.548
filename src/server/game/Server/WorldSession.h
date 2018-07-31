@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -212,6 +212,10 @@ public:
 
 protected:
     WorldSession* const m_pSession;
+
+private:
+    PacketFilter(PacketFilter const& right) = delete;
+    PacketFilter & operator=(PacketFilter const& right) = delete;
 };
 //process only thread-safe packets in Map::Update()
 class MapSessionFilter : public PacketFilter
@@ -288,7 +292,6 @@ class WorldSession
         void SendNotification(uint32 string_id, ...);
         void SendPetNameInvalid(uint32 error, std::string const& name, DeclinedName *declinedName, uint32 petNumber);
         void SendPartyResult(PartyOperation operation, std::string const& member, PartyResult res, uint32 val = 0);
-        void SendAreaTriggerMessage(const char* Text, ...) ATTR_PRINTF(2, 3);
         void SendSetPhaseShift(std::set<uint32> const& phaseIds, std::set<uint32> const& terrainswaps, std::set<uint32> const& worldAreas);
         void SendQueryTimeResponse();
         void SendGroupInviteNotification(const std::string& inviterName, bool inGroup);
@@ -408,7 +411,7 @@ class WorldSession
         void SendAuctionRemovedNotification(uint32 auctionId, uint32 itemEntry, int32 randomPropertyId);
 
         //Item Enchantment
-        void SendEnchantmentLog(uint64 target, uint64 caster, uint32 itemId, uint32 enchantId);
+        void SendEnchantmentLog(uint64 target, uint64 caster, uint64 itemGuid, uint32 itemId, uint32 enchantId, uint32 enchantmentSlot);
         void SendItemEnchantTimeUpdate(ObjectGuid Playerguid, ObjectGuid Itemguid, uint32 slot, uint32 Duration);
 
         //Taxi
@@ -910,15 +913,15 @@ class WorldSession
 
         // Looking for Dungeon/Raid
         void HandleLfgSetCommentOpcode(WorldPacket& recvData);
-        void HandleLfgGetLockInfoOpcode(WorldPacket& recvData);
+        void HandleLFDGetLockInfoOpcode(WorldPacket& recvData);
         void SendLfgPlayerLockInfo();
         void SendLfgPartyLockInfo();
         void HandleLfgJoinOpcode(WorldPacket& recvData);
         void HandleLfgLeaveOpcode(WorldPacket& recvData);
         void HandleLfgSetRolesOpcode(WorldPacket& recvData);
         void HandleLfgProposalResultOpcode(WorldPacket& recvData);
-        void HandleLfgSetBootVoteOpcode(WorldPacket& recvData);
-        void HandleLfgTeleportOpcode(WorldPacket& recvData);
+        void HandleLFDSetBootVoteOpcode(WorldPacket& recvData);
+        void HandleLFDTeleportOpcode(WorldPacket& recvData);
         void HandleLfrJoinOpcode(WorldPacket& recvData);
         void HandleLfrLeaveOpcode(WorldPacket& recvData);
         void HandleLfgGetStatus(WorldPacket& recvData);
@@ -958,6 +961,7 @@ class WorldSession
 
         // Socket gem
         void HandleSocketOpcode(WorldPacket& recvData);
+        void SendUpdateSockets(ObjectGuid ItemGUID, Item* item);
 
         void HandleCancelTempEnchantmentOpcode(WorldPacket& recvData);
 
@@ -1084,6 +1088,8 @@ class WorldSession
         void SendTitleEarned(uint32 TitleIndex);
         void SendTitleLost(uint32 TitleIndex);
 
+        void SendPlayMusic(uint32 SoundKitID);
+
     private:
         void InitializeQueryCallbackParameters();
         void ProcessQueryCallbacks();
@@ -1131,6 +1137,9 @@ class WorldSession
                 typedef UNORDERED_MAP<uint16, bool> OpcodeStatusMap;
                 OpcodeStatusMap _isOpcodeAllowed; // could be bool array, but wouldn't be practical for game versions with non-linear opcodes
                 Policy _policy;
+
+                DosProtection(DosProtection const& right) = delete;
+                DosProtection & operator=(DosProtection const& right) = delete;
         } AntiDOS;
 
     private:
@@ -1189,6 +1198,8 @@ class WorldSession
         time_t timeLastWhoCommand;
         z_stream_s* _compressionStream;
         rbac::RBACData* _RBACData;
+        WorldSession(WorldSession const& right) = delete;
+        WorldSession & operator=(WorldSession const& right) = delete;
 };
 #endif
 /// @}

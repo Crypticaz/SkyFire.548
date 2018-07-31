@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -40,7 +40,7 @@ typedef UNORDERED_MAP<uint32, std::set<uint32> > TransportInstanceMap;
 
 struct KeyFrame
 {
-    explicit KeyFrame(TaxiPathNodeEntry const& _node) : Node(&_node),
+    explicit KeyFrame(TaxiPathNodeEntry const& _node) : Index(0), Node(&_node),
         DistSinceStop(-1.0f), DistUntilStop(-1.0f), DistFromPrev(-1.0f), TimeFrom(0.0f), TimeTo(0.0f),
         Teleport(false), ArriveTime(0), DepartureTime(0), Spline(NULL), NextDistFromPrev(0.0f), NextArriveTime(0)
     {
@@ -68,7 +68,7 @@ struct KeyFrame
 
 struct TransportTemplate
 {
-    TransportTemplate() : pathTime(0), accelTime(0.0f), accelDist(0.0f) { }
+    TransportTemplate() : inInstance(false), pathTime(0), accelTime(0.0f), accelDist(0.0f), entry(0) { }
     ~TransportTemplate();
 
     std::set<uint32> mapsUsed;

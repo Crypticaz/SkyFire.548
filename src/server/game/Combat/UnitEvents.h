@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -94,13 +94,13 @@ class ThreatRefStatusChangeEvent : public UnitBaseEvent
         };
         ThreatManager* iThreatManager;
     public:
-        ThreatRefStatusChangeEvent(uint32 pType) : UnitBaseEvent(pType) { iHostileReference = NULL; }
+        ThreatRefStatusChangeEvent(uint32 pType) : UnitBaseEvent(pType), iThreatManager(NULL) { iHostileReference = NULL; }
 
-        ThreatRefStatusChangeEvent(uint32 pType, HostileReference* pHostileReference) : UnitBaseEvent(pType) { iHostileReference = pHostileReference; }
+        ThreatRefStatusChangeEvent(uint32 pType, HostileReference* pHostileReference) : UnitBaseEvent(pType), iThreatManager(NULL) { iHostileReference = pHostileReference; }
 
-        ThreatRefStatusChangeEvent(uint32 pType, HostileReference* pHostileReference, float pValue) : UnitBaseEvent(pType) { iHostileReference = pHostileReference; iFValue = pValue; }
+        ThreatRefStatusChangeEvent(uint32 pType, HostileReference* pHostileReference, float pValue) : UnitBaseEvent(pType), iThreatManager(NULL) { iHostileReference = pHostileReference; iFValue = pValue; }
 
-        ThreatRefStatusChangeEvent(uint32 pType, HostileReference* pHostileReference, bool pValue) : UnitBaseEvent(pType) { iHostileReference = pHostileReference; iBValue = pValue; }
+        ThreatRefStatusChangeEvent(uint32 pType, HostileReference* pHostileReference, bool pValue) : UnitBaseEvent(pType), iThreatManager(NULL) { iHostileReference = pHostileReference; iBValue = pValue; }
 
         int32 getIValue() const { return iIValue; }
 

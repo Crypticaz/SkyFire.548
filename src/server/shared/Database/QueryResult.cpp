@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -50,10 +50,10 @@ m_length(NULL)
     }
 
     m_rBind = new MYSQL_BIND[m_fieldCount];
-    m_isNull = new my_bool[m_fieldCount];
+    m_isNull = new bool[m_fieldCount];
     m_length = new unsigned long[m_fieldCount];
 
-    memset(m_isNull, 0, sizeof(my_bool) * m_fieldCount);
+    memset(m_isNull, 0, sizeof(bool) * m_fieldCount);
     memset(m_rBind, 0, sizeof(MYSQL_BIND) * m_fieldCount);
     memset(m_length, 0, sizeof(unsigned long) * m_fieldCount);
 

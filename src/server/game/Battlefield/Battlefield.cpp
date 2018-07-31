@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -924,7 +924,7 @@ Creature* Battlefield::SpawnCreature(uint32 entry, float x, float y, float z, fl
     }
 
     Creature* creature = new Creature;
-    if (!creature->Create(sObjectMgr->GenerateLowGuid(HIGHGUID_UNIT), map, PHASEMASK_NORMAL, entry, 0, team, x, y, z, o))
+    if (!creature->Create(sObjectMgr->GenerateLowGuid(HIGHGUID_UNIT), map, entry, 0, team, x, y, z, o))
     {
         SF_LOG_ERROR("bg.battlefield", "Battlefield::SpawnCreature: Can't create creature entry: %u", entry);
         delete creature;
@@ -960,13 +960,16 @@ GameObject* Battlefield::SpawnGameObject(uint32 entry, float x, float y, float z
 
     // Create gameobject
     GameObject* go = new GameObject;
-    if (!go->Create(sObjectMgr->GenerateLowGuid(HIGHGUID_GAMEOBJECT), entry, map, PHASEMASK_NORMAL, x, y, z, o, 0, 0, 0, 0, 100, GO_STATE_READY))
+    if (!go->Create(sObjectMgr->GenerateLowGuid(HIGHGUID_GAMEOBJECT), entry, map, x, y, z, o, 0, 0, 0, 0, 100, GO_STATE_READY))
     {
         SF_LOG_ERROR("bg.battlefield", "Battlefield::SpawnGameObject: Gameobject template %u not found in database! Battlefield not created!", entry);
         SF_LOG_ERROR("bg.battlefield", "Battlefield::SpawnGameObject: Cannot create gameobject template %u! Battlefield not created!", entry);
         delete go;
         return NULL;
     }
+
+    for (auto phase : go->GetPhases())
+        go->SetPhased(phase, false, true);
 
     // Add to world
     map->AddToMap(go);

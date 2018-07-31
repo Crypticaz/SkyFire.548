@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -369,17 +369,19 @@ class Map : public GridRefManager<NGridType>
         const char* GetMapName() const;
 
         // have meaning only for instanced map (that have set real difficulty)
-        Difficulty GetDifficulty() const { return Difficulty(GetSpawnMode()); }
-        bool IsRegularDifficulty() const { return GetDifficulty() == REGULAR_DIFFICULTY; }
+        DifficultyID GetDifficulty() const { return DifficultyID(GetSpawnMode()); }
+        bool IsRegularDifficulty() const { return GetDifficulty() == 0; }
         MapDifficulty const* GetMapDifficulty() const;
 
         bool Instanceable() const { return i_mapEntry && i_mapEntry->Instanceable(); }
+        bool IsInstance() const {  return IsRaid() || IsDungeon() || IsScenario(); }
         bool IsDungeon() const { return i_mapEntry && i_mapEntry->IsDungeon(); }
-        bool IsNonRaidDungeon() const { return i_mapEntry && i_mapEntry->IsNonRaidDungeon(); }
+        bool IsScenario() const { return i_mapEntry && i_mapEntry->IsScenario(); }
+        bool IsNonRaidInstance() const { return i_mapEntry && i_mapEntry->IsNonRaidInstance(); }
         bool IsRaid() const { return i_mapEntry && i_mapEntry->IsRaid(); }
-        bool IsRaidOrHeroicDungeon() const { return IsRaid() || i_spawnMode > DUNGEON_DIFFICULTY_NORMAL; }
-        bool IsHeroic() const { return IsRaid() ? i_spawnMode >= RAID_DIFFICULTY_10MAN_HEROIC : i_spawnMode >= DUNGEON_DIFFICULTY_HEROIC; }
-        bool Is25ManRaid() const { return IsRaid() && i_spawnMode & RAID_DIFFICULTY_MASK_25MAN; }   // since 25man difficulties are 1 and 3, we can check them like that
+        bool IsRaidOrHeroicDungeon() const { return IsRaid() || i_spawnMode == DIFFICULTY_HEROIC; }
+        bool IsHeroic() const;
+        bool Is25ManRaid() const { return IsRaid() && i_spawnMode & (DIFFICULTY_25MAN_NORMAL || DIFFICULTY_25MAN_HEROIC || DIFFICULTY_25MAN_LFR); }   // since 25man difficulties are 1 and 3, we can check them like that
         bool IsBattleground() const { return i_mapEntry && i_mapEntry->IsBattleground(); }
         bool IsBattleArena() const { return i_mapEntry && i_mapEntry->IsBattleArena(); }
         bool IsBattlegroundOrArena() const { return i_mapEntry && i_mapEntry->IsBattlegroundOrArena(); }
@@ -444,8 +446,8 @@ class Map : public GridRefManager<NGridType>
         MapInstanced* ToMapInstanced(){ if (Instanceable())  return reinterpret_cast<MapInstanced*>(this); else return NULL;  }
         const MapInstanced* ToMapInstanced() const { if (Instanceable())  return (const MapInstanced*)((MapInstanced*)this); else return NULL;  }
 
-        InstanceMap* ToInstanceMap(){ if (IsDungeon())  return reinterpret_cast<InstanceMap*>(this); else return NULL;  }
-        const InstanceMap* ToInstanceMap() const { if (IsDungeon())  return (const InstanceMap*)((InstanceMap*)this); else return NULL;  }
+        InstanceMap* ToInstanceMap(){ if (IsInstance())  return reinterpret_cast<InstanceMap*>(this); else return NULL;  }
+        const InstanceMap* ToInstanceMap() const { if (IsInstance())  return (const InstanceMap*)((InstanceMap*)this); else return NULL;  }
         float GetWaterOrGroundLevel(float x, float y, float z, float* ground = NULL, bool swim = false) const;
         float GetHeight(uint32 phasemask, float x, float y, float z, bool vmap = true, float maxSearchDist = DEFAULT_HEIGHT_SEARCH) const;
         bool isInLineOfSight(float x1, float y1, float z1, float x2, float y2, float z2, uint32 phasemask) const;

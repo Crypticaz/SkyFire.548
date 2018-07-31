@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -178,10 +178,8 @@ template<class TObject> class UpdatableScript
 {
     protected:
 
-        UpdatableScript()
-        {
-        }
-
+        UpdatableScript() { }
+        virtual ~UpdatableScript() { }
     public:
 
         virtual void OnUpdate(TObject* /*obj*/, uint32 /*diff*/) { }
@@ -551,7 +549,7 @@ class CommandScript : public ScriptObject
     public:
 
         // Should return a pointer to a valid command table (ChatCommand array) to be used by ChatHandler.
-        virtual ChatCommand* GetCommands() const = 0;
+        virtual std::vector<ChatCommand> GetCommands() const = 0;
 };
 
 class WeatherScript : public ScriptObject, public UpdatableScript<Weather>
@@ -753,7 +751,7 @@ class PlayerScript : public UnitScript
         virtual void OnSave(Player* /*player*/) { }
 
         // Called when a player is bound to an instance
-        virtual void OnBindToInstance(Player* /*player*/, Difficulty /*difficulty*/, uint32 /*mapId*/, bool /*permanent*/) { }
+        virtual void OnBindToInstance(Player* /*player*/, DifficultyID /*difficulty*/, uint32 /*mapId*/, bool /*permanent*/) { }
 
         // Called when a player switches to a new zone
         virtual void OnUpdateZone(Player* /*player*/, uint32 /*newZone*/, uint32 /*newArea*/) { }
@@ -962,7 +960,7 @@ class ScriptMgr
 
     public: /* CommandScript */
 
-        std::vector<ChatCommand*> GetChatCommands();
+        std::vector<ChatCommand> GetChatCommands();
 
     public: /* WeatherScript */
 
@@ -1032,7 +1030,7 @@ class ScriptMgr
         void OnPlayerCreate(Player* player);
         void OnPlayerDelete(uint64 guid);
         void OnPlayerSave(Player* player);
-        void OnPlayerBindToInstance(Player* player, Difficulty difficulty, uint32 mapid, bool permanent);
+        void OnPlayerBindToInstance(Player* player, DifficultyID difficulty, uint32 mapid, bool permanent);
         void OnPlayerUpdateZone(Player* player, uint32 newZone, uint32 newArea);
 
     public: /* GuildScript */
@@ -1080,5 +1078,60 @@ class ScriptMgr
         //atomic op counter for active scripts amount
         ACE_Atomic_Op<ACE_Thread_Mutex, long> _scheduledScripts;
 };
+
+template <class S>
+class GenericSpellScriptLoader : public SpellScriptLoader
+{
+public:
+    GenericSpellScriptLoader(char const* name) : SpellScriptLoader(name) { }
+    SpellScript * GetSpellScript() const override { return new S(); }
+};
+#define RegisterSpellScript(spell_script) new GenericSpellScriptLoader<spell_script>(#spell_script)
+
+template <class A>
+class GenericAuraScriptLoader : public SpellScriptLoader
+{
+public:
+    GenericAuraScriptLoader(char const* name) : SpellScriptLoader(name) { }
+    AuraScript * GetAuraScript() const override { return new A(); }
+};
+#define RegisterAuraScript(aura_script) new GenericAuraScriptLoader<aura_script>(#aura_script)
+
+template <class S, class A>
+class GenericSpellAndAuraScriptLoader : public SpellScriptLoader
+{
+public:
+    GenericSpellAndAuraScriptLoader(char const* name) : SpellScriptLoader(name) { }
+    SpellScript * GetSpellScript() const override { return new S(); }
+    AuraScript * GetAuraScript() const override { return new A(); }
+};
+#define RegisterSpellAndAuraScriptPair(spell_script, aura_script) new GenericSpellAndAuraScriptLoader<spell_script, aura_script>(#spell_script)
+
+template <class AI>
+class GenericCreatureScript : public CreatureScript
+{
+public:
+    GenericCreatureScript(char const* name) : CreatureScript(name) { }
+    CreatureAI * GetAI(Creature* me) const override { return new AI(me); }
+};
+#define RegisterCreatureAI(ai_name) new GenericCreatureScript<ai_name>(#ai_name)
+
+template <class AI, AI*(*AIFactory)(Creature*)>
+class FactoryCreatureScript : public CreatureScript
+{
+public:
+    FactoryCreatureScript(char const* name) : CreatureScript(name) { }
+    CreatureAI * GetAI(Creature* me) const override { return AIFactory(me); }
+};
+#define RegisterCreatureAIWithFactory(ai_name, factory_fn) new FactoryCreatureScript<ai_name, &factory_fn>(#ai_name)
+
+template <class AI>
+class GenericGameObjectScript : public GameObjectScript
+{
+public:
+    GenericGameObjectScript(char const* name) : GameObjectScript(name) { }
+    GameObjectAI * GetAI(GameObject* go) const override { return new AI(go); }
+};
+#define RegisterGameObjectAI(ai_name) new GenericGameObjectScript<ai_name>(#ai_name)
 
 #endif

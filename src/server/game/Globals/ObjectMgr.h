@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -43,7 +43,6 @@
 #include <limits>
 #include "ConditionMgr.h"
 #include <functional>
-#include "PhaseMgr.h"
 #include "DB2Stores.h"
 #include "Containers.h"
 
@@ -460,7 +459,7 @@ typedef std::pair<QuestRelations::const_iterator, QuestRelations::const_iterator
 
 struct PetLevelInfo
 {
-    PetLevelInfo() : health(0), mana(0) { for (uint8 i=0; i < MAX_STATS; ++i) stats[i] = 0; }
+    PetLevelInfo() : health(0), mana(0), armor(0) { for (uint8 i=0; i < MAX_STATS; ++i) stats[i] = 0; }
 
     uint16 stats[MAX_STATS];
     uint16 health;
@@ -684,6 +683,15 @@ struct ResearchProjectRequirements
 
 typedef UNORDERED_MAP<uint32, ResearchProjectRequirements> ResearchProjectRequirementContainer;
 
+struct PhaseInfoStruct
+{
+    uint32 id;
+    ConditionList Conditions;
+};
+
+typedef UNORDERED_MAP<uint32, std::vector<PhaseInfoStruct>> TerrainPhaseInfo;
+typedef UNORDERED_MAP<uint32, std::vector<uint32>> TerrainUIPhaseInfo;
+typedef UNORDERED_MAP<uint32, std::vector<PhaseInfoStruct>> PhaseInfo;
 class PlayerDumpReader;
 
 class ObjectMgr
@@ -814,7 +822,7 @@ class ObjectMgr
             return NULL;
         }
 
-        AccessRequirement const* GetAccessRequirement(uint32 mapid, Difficulty difficulty) const
+        AccessRequirement const* GetAccessRequirement(uint32 mapid, DifficultyID difficulty) const
         {
             AccessRequirementContainer::const_iterator itr = _accessRequirementStore.find(MAKE_PAIR32(mapid, difficulty));
             if (itr != _accessRequirementStore.end())
@@ -874,7 +882,7 @@ class ObjectMgr
 
         VehicleAccessoryList const* GetVehicleAccessoryList(Vehicle* veh) const;
 
-        DungeonEncounterList const* GetDungeonEncounterList(uint32 mapId, Difficulty difficulty)
+        DungeonEncounterList const* GetDungeonEncounterList(uint32 mapId, DifficultyID difficulty)
         {
             UNORDERED_MAP<uint32, DungeonEncounterList>::const_iterator itr = _dungeonEncounterStore.find(MAKE_PAIR32(mapId, difficulty));
             if (itr != _dungeonEncounterStore.end())
@@ -1010,11 +1018,42 @@ class ObjectMgr
         void LoadTrainerSpell();
         void AddSpellToTrainer(uint32 entry, uint32 spell, uint32 spellCost, uint32 reqSkill, uint32 reqSkillValue, uint32 reqLevel);
 
-        void LoadPhaseDefinitions();
-        void LoadSpellPhaseInfo();
+        void LoadTerrainPhaseInfo();
+        void LoadTerrainSwapDefaults();
+        void LoadTerrainWorldMaps();
+        void LoadAreaPhases();
 
-        PhaseDefinitionStore const* GetPhaseDefinitionStore() { return &_PhaseDefinitionStore; }
-        SpellPhaseStore const* GetSpellPhaseStore() { return &_SpellPhaseStore; }
+        std::vector<PhaseInfoStruct> const* GetPhaseTerrainSwaps(uint32 phaseid) const
+        {
+            auto itr = _terrainPhaseInfoStore.find(phaseid);
+            return itr != _terrainPhaseInfoStore.end() ? &itr->second : nullptr;
+        }
+        std::vector<PhaseInfoStruct> const* GetDefaultTerrainSwaps(uint32 mapid) const
+        {
+            auto itr = _terrainMapDefaultStore.find(mapid);
+            return itr != _terrainMapDefaultStore.end() ? &itr->second : nullptr;
+        }
+        std::vector<uint32> const* GetTerrainWorldMaps(uint32 terrainId) const
+        {
+            auto itr = _terrainWorldMapStore.find(terrainId);
+            return itr != _terrainWorldMapStore.end() ? &itr->second : nullptr;
+        }
+        std::vector<PhaseInfoStruct> const* GetPhasesForArea(uint32 area) const
+        {
+            auto itr = _phases.find(area);
+            return itr != _phases.end() ? &itr->second : nullptr;
+        }
+        TerrainPhaseInfo const& GetDefaultTerrainSwapStore() const { return _terrainMapDefaultStore; }
+        PhaseInfo const& GetAreaPhases() const { return _phases; }
+
+        std::vector<PhaseInfoStruct>* GetPhasesForAreaForLoading(uint32 area)
+        {
+            auto itr = _phases.find(area);
+            return itr != _phases.end() ? &itr->second : nullptr;
+        }
+        TerrainPhaseInfo& GetPhaseTerrainSwapStoreForLoading() { return _terrainPhaseInfoStore; }
+        TerrainPhaseInfo& GetDefaultTerrainSwapStoreForLoading() { return _terrainMapDefaultStore; }
+        PhaseInfo & GetAreaPhasesForLoading() { return _phases; }
 
         void LoadBattlePetBreedData();
         void LoadBattlePetQualityData();
@@ -1443,9 +1482,11 @@ class ObjectMgr
         PageTextContainer _pageTextStore;
         InstanceTemplateContainer _instanceTemplateStore;
 
-        PhaseDefinitionStore _PhaseDefinitionStore;
-        SpellPhaseStore _SpellPhaseStore;
-
+        TerrainPhaseInfo _terrainPhaseInfoStore;
+        TerrainPhaseInfo _terrainMapDefaultStore;
+        TerrainUIPhaseInfo _terrainWorldMapStore;
+        PhaseInfo _phases;
+        
         typedef std::set<uint8> BattleBetBreedSet;
         typedef UNORDERED_MAP<uint16, BattleBetBreedSet> BattlePetBreedXSpeciesMap;
         typedef std::set<uint8> BattlePetQualitySet;
@@ -1515,8 +1556,8 @@ class ObjectMgr
 
         GraveyardOrientationContainer _graveyardOrientations;
 
-        std::set<uint32> _difficultyEntries[MAX_DIFFICULTY - 1]; // already loaded difficulty 1 value in creatures, used in CheckCreatureTemplate
-        std::set<uint32> _hasDifficultyEntries[MAX_DIFFICULTY - 1]; // already loaded creatures with difficulty 1 values, used in CheckCreatureTemplate
+        std::set<uint32> _difficultyEntries[4 - 1]; // already loaded difficulty 1 value in creatures, used in CheckCreatureTemplate
+        std::set<uint32> _hasDifficultyEntries[4 - 1]; // already loaded creatures with difficulty 1 values, used in CheckCreatureTemplate
 
         enum CreatureLinkedRespawnType
         {

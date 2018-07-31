@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -2490,6 +2490,29 @@ public:
     }
 };
 
+class npc_training_target : public CreatureScript
+{
+public:
+    npc_training_target() : CreatureScript("npc_training_target") { }
+
+    struct npc_training_targetAI : ScriptedAI
+    {
+        npc_training_targetAI(Creature* creature) : ScriptedAI(creature)
+        {
+            SetCombatMovement(false);
+            entry = creature->GetEntry();
+        }
+
+        uint32 entry;
+    };
+
+    CreatureAI* GetAI(Creature* creature) const OVERRIDE
+    {
+        return new npc_training_targetAI(creature);
+    }
+};
+
+
 void AddSC_npcs_special()
 {
     new npc_air_force_bots();
@@ -2515,4 +2538,5 @@ void AddSC_npcs_special()
     new npc_Spirit_of_Master_Shang_Xi();
     new npc_spring_rabbit();
     new npc_madam_goya();
+    new npc_training_target();
 }

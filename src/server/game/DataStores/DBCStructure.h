@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -1282,6 +1282,31 @@ struct DestructibleModelDataEntry
     //uint32  Unk8;
 };
 
+struct DifficultyEntry
+{
+    uint32 DiffID;
+    uint32 DownscaleID;
+    uint32 maptype;
+    //uint32
+    //uint32
+    //uint32 SpawnMode;
+    uint32 flags;
+    //
+    //
+    //
+    //
+    //
+
+};
+
+enum diffflag
+{
+    DIFFICULTY_FLAG_CAN_SELECT = 0x04, // Player can select this difficulty in dropdown menu
+    DIFFICULTY_FLAG_HEROIC = 0x05,
+    DIFFICULTY_FLAG_DEFAULT = 0x06,
+    DIFFICULTY_FLAG_CHALLENGE_MODE = 0x0D,
+};
+
 struct DungeonEncounterEntry
 {
     uint32 id;                                              // 0        unique id
@@ -1748,9 +1773,9 @@ struct LFGDungeonEntry
     uint32  recminlevel;                                    // 5
     uint32  recmaxlevel;                                    // 6
     int32   map;                                            // 7
-    uint32  type;                                           // 8
+    uint32  difficulty;                                     // 8
     uint32  flags;                                          // 9
-    uint32  difficulty;                                     // 10
+    uint32  type;                                           // 10
     //uint32  unk2;                                         // 11
     //char*   iconname;                                     // 12
     uint32  expansion;                                      // 13
@@ -1805,6 +1830,13 @@ struct PhaseEntry
     uint32    flag;                                         // 2
 };
 
+struct PhaseGroupEntry
+{
+    uint32 ID;
+    uint32 PhaseId;
+    uint32 GroupId;
+};
+
 struct MailTemplateEntry
 {
     uint32      ID;                                         // 0
@@ -1837,15 +1869,17 @@ struct MapEntry
     // Helpers
     uint32 Expansion() const { return addon; }
 
-    bool IsDungeon() const { return map_type == MAP_INSTANCE || map_type == MAP_RAID; }
-    bool IsNonRaidDungeon() const { return map_type == MAP_INSTANCE; }
-    bool Instanceable() const { return map_type == MAP_INSTANCE || map_type == MAP_RAID || map_type == MAP_BATTLEGROUND || map_type == MAP_ARENA || map_type == MAP_SCENARIO; }
+    bool IsDungeon() const { return map_type == MAP_DUNGEON; }
+    bool IsNonRaidInstance() const { return map_type == MAP_DUNGEON || map_type == MAP_SCENARIO; }
+    bool Instanceable() const { return map_type == MAP_DUNGEON || map_type == MAP_RAID || map_type == MAP_BATTLEGROUND || map_type == MAP_ARENA || map_type == MAP_SCENARIO; }
     bool IsRaid() const { return map_type == MAP_RAID; }
     bool IsBattleground() const { return map_type == MAP_BATTLEGROUND; }
     bool IsBattleArena() const { return map_type == MAP_ARENA; }
     bool IsScenario() const { return map_type == MAP_SCENARIO; }
     bool IsBattlegroundOrArena() const { return map_type == MAP_BATTLEGROUND || map_type == MAP_ARENA; }
     bool IsWorldMap() const { return map_type == MAP_COMMON; }
+
+    bool IsInstance() const { return map_type == MAP_DUNGEON || map_type == MAP_RAID; }
 
     bool GetEntrancePos(int32 &mapid, float &x, float &y) const
     {
@@ -1868,7 +1902,7 @@ struct MapDifficultyEntry
     //uint32      Id;                                       // 0
     uint32      MapId;                                      // 1
     uint32      Difficulty;                                 // 2 (for arenas: arena slot)
-    char*   areaTriggerText;                                // 3        m_message_lang (text showed when transfer to map failed)
+    char*       areaTriggerText;                            // 3        m_message_lang (text showed when transfer to map failed)
     uint32      resetTime;                                  // 4,       m_raidDuration in secs, 0 if no fixed reset time
     uint32      maxPlayers;                                 // 5,       m_maxPlayers some heroic versions have 0 when expected same amount as in normal version
     //char*       difficultyString;                         // 6        m_difficultystring
@@ -2316,7 +2350,7 @@ struct SpellCategoryEntry
 struct SpellDifficultyEntry
 {
     uint32     ID;                                          // 0
-    int32      SpellID[MAX_DIFFICULTY];                     // 1-4 instance modes: 10N, 25N, 10H, 25H or Normal/Heroic if only 1-2 is set, if 3-4 is 0 then Mode-2
+    int32      SpellID[4];                     // 1-4 instance modes: 10N, 25N, 10H, 25H or Normal/Heroic if only 1-2 is set, if 3-4 is 0 then Mode-2
 };
 
 struct SpellFocusObjectEntry
@@ -2447,7 +2481,7 @@ struct SpellShapeshiftFormEntry
     //uint32 unk3;                                          // 9 unused always 0
     //uint32 unk4;                                          // 10 unused always 0
     uint32 stanceSpell[MAX_SHAPESHIFT_SPELLS];              // 11-18 spells which appear in the bar after shapeshifting
-    //uint32 unk5;                                          // 19
+    uint32 mount_type;                                       // MountType.dbc
     //uint32 unk6;                                          // 20
 };
 
@@ -2502,17 +2536,18 @@ struct SpellItemEnchantmentEntry
     //uint32      charges;                                  // 1        m_charges
     uint32      type[MAX_ITEM_ENCHANTMENT_EFFECTS];         // 2-4      m_effect[MAX_ITEM_ENCHANTMENT_EFFECTS]
     uint32      amount[MAX_ITEM_ENCHANTMENT_EFFECTS];       // 5-7      m_effectPointsMin[MAX_ITEM_ENCHANTMENT_EFFECTS]
-    //uint32      amount2[MAX_ITEM_ENCHANTMENT_EFFECTS]     // 8-10     m_effectPointsMax[MAX_ITEM_ENCHANTMENT_EFFECTS]
-    uint32      spellid[MAX_ITEM_ENCHANTMENT_EFFECTS];      // 11-13    m_effectArg[MAX_ITEM_ENCHANTMENT_EFFECTS]
-    char*       description;                                // 14       m_name_lang
-    uint32      aura_id;                                    // 15       m_itemVisual
-    uint32      slot;                                       // 16       m_flags
-    uint32      GemID;                                      // 17       m_src_itemID
-    uint32      EnchantmentCondition;                       // 18       m_condition_id
-    uint32      requiredSkill;                              // 19       m_requiredSkillID
-    uint32      requiredSkillValue;                         // 20       m_requiredSkillRank
-    uint32      requiredLevel;                              // 21       new in 3.1
-                                                            // 22       new in 3.1
+    uint32      spellid[MAX_ITEM_ENCHANTMENT_EFFECTS];      // 8-10    m_effectArg[MAX_ITEM_ENCHANTMENT_EFFECTS]
+    char*       description;                                // 11       m_name_lang
+    uint32      aura_id;                                    // 12       m_itemVisual
+    uint32      slot;                                       // 13       m_flags
+    uint32      GemID;                                      // 14       m_src_itemID
+    uint32      EnchantmentCondition;                       // 15       m_condition_id
+    uint32      requiredSkill;                              // 16       m_requiredSkillID
+    uint32      requiredSkillValue;                         // 17       m_requiredSkillRank
+    uint32      requiredMinLevel;                           // 18       m_requiredMinLevel
+    uint32      requiredMaxLevel;                           // 19       m_requiredMaxLevel
+    //uint32      unk[MAX_ITEM_ENCHANTMENT_EFFECTS]         // 20-22    unk
+    //float     unk2[MAX_ITEM_ENCHANTMENT_EFFECTS]          // 23-25    unk2
 };
 
 struct SpellItemEnchantmentConditionEntry
@@ -2854,6 +2889,8 @@ struct WorldStateUI
 #pragma pack(pop)
 #endif
 
+typedef std::unordered_map<uint32, std::set<uint32>> PhaseGroupContainer;
+
 struct VectorArray
 {
     std::vector<std::string> stringVectorArray[2];
@@ -2864,9 +2901,12 @@ typedef std::map<uint32, VectorArray> NameGenVectorArraysMap;
 // Structures not used for casting to loaded DBC data and not required then packing
 struct MapDifficulty
 {
-    MapDifficulty() : resetTime(0), maxPlayers(0), hasErrorMessage(false) { }
-    MapDifficulty(uint32 _resetTime, uint32 _maxPlayers, bool _hasErrorMessage) : resetTime(_resetTime), maxPlayers(_maxPlayers), hasErrorMessage(_hasErrorMessage) { }
-
+    MapDifficulty() : DifficultyID(0), ErrorMessage(""), resetTime(0), maxPlayers(0), hasErrorMessage(false) { }
+    MapDifficulty(uint32 difficultyID, std::string _errorMessage, uint32 _resetTime, uint32 _maxPlayers, bool _hasErrorMessage)
+        : DifficultyID(difficultyID), ErrorMessage(_errorMessage), resetTime(_resetTime), maxPlayers(_maxPlayers), hasErrorMessage(_hasErrorMessage) { }
+    
+    uint32 DifficultyID;
+    std::string ErrorMessage;
     uint32 resetTime;
     uint32 maxPlayers;
     bool hasErrorMessage;

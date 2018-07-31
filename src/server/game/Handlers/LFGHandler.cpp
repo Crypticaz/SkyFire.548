@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -27,23 +27,31 @@
 
 void BuildPlayerLockDungeonBlock(WorldPacket& data, lfg::LfgLockMap const& lock)
 {
-    data << uint32(lock.size());                           // Size of lock dungeons
     for (lfg::LfgLockMap::const_iterator it = lock.begin(); it != lock.end(); ++it)
     {
-        data << uint32(it->first);                         // Dungeon entry (id + type)
-        data << uint32(it->second);                        // Lock status
-        data << uint32(0);                                 // Required itemLevel
         data << uint32(0);                                 // Current itemLevel
+        data << uint32(it->first);                         // Dungeon entry (id + type)
+        data << uint32(0);                                 // Required itemLevel
+        data << uint32(it->second);                        // Lock status
     }
 }
 
 void BuildPartyLockDungeonBlock(WorldPacket& data, lfg::LfgLockPartyMap const& lockMap)
 {
-    data << uint8(lockMap.size());
+    data.WriteBits(lockMap.size(), 22);
     for (lfg::LfgLockPartyMap::const_iterator it = lockMap.begin(); it != lockMap.end(); ++it)
     {
-        data << uint64(it->first);                         // Player guid
+        bool hasGuid = true;
+        ObjectGuid PlayerGUID = it->first;
+
+        data.WriteBit(hasGuid);
+        data.WriteGuidMask(PlayerGUID, 3, 6, 0, 5, 2, 7, 4, 1);
+        data.WriteBits(it->second.size(), 20);                            // Size of lock dungeons
+
+        data.FlushBits();
+
         BuildPlayerLockDungeonBlock(data, it->second);
+        data.WriteGuidBytes(PlayerGUID, 0, 3, 1, 4, 6, 2, 5, 7);
     }
 }
 
@@ -247,31 +255,33 @@ void WorldSession::HandleLfgSetCommentOpcode(WorldPacket&  recvData)
     sLFGMgr->SetComment(GetPlayer()->GetGUID(), comment);
 }
 
-void WorldSession::HandleLfgSetBootVoteOpcode(WorldPacket& recvData)
+void WorldSession::HandleLFDSetBootVoteOpcode(WorldPacket& recvData)
 {
     bool agree;                                            // Agree to kick player
     recvData >> agree;
 
     uint64 guid = GetPlayer()->GetGUID();
-    SF_LOG_DEBUG("lfg", "CMSG_LFG_SET_BOOT_VOTE %s agree: %u",
+    SF_LOG_DEBUG("lfg", "CMSG_LFD_SET_BOOT_VOTE %s agree: %u",
         GetPlayerInfo().c_str(), agree ? 1 : 0);
     sLFGMgr->UpdateBoot(guid, agree);
 }
 
-void WorldSession::HandleLfgTeleportOpcode(WorldPacket& recvData)
+void WorldSession::HandleLFDTeleportOpcode(WorldPacket& recvData)
 {
     bool out;
     recvData >> out;
 
-    SF_LOG_DEBUG("lfg", "CMSG_LFG_TELEPORT %s out: %u",
+    SF_LOG_DEBUG("lfg", "CMSG_LFD_TELEPORT %s out: %u",
         GetPlayerInfo().c_str(), out ? 1 : 0);
     sLFGMgr->TeleportPlayer(GetPlayer(), out, true);
 }
 
-void WorldSession::HandleLfgGetLockInfoOpcode(WorldPacket& recvData)
+void WorldSession::HandleLFDGetLockInfoOpcode(WorldPacket& recvData)
 {
+    uint8 partyIndex = 0;
+    recvData >> partyIndex; // partyIndex NYI
     bool forPlayer = recvData.ReadBit();
-    SF_LOG_DEBUG("lfg", "CMSG_LFG_LOCK_INFO_REQUEST %s for %s", GetPlayerInfo().c_str(), (forPlayer ? "player" : "party"));
+    SF_LOG_DEBUG("lfg", "CMSG_LFD_LOCK_INFO_REQUEST %s for %s", GetPlayerInfo().c_str(), (forPlayer ? "player" : "party"));
 
     if (forPlayer)
         SendLfgPlayerLockInfo();
@@ -377,8 +387,8 @@ void WorldSession::SendLfgPartyLockInfo()
     for (lfg::LfgLockPartyMap::const_iterator it = lockMap.begin(); it != lockMap.end(); ++it)
         size += 8 + 4 + uint32(it->second.size()) * (4 + 4 + 4 + 4);
 
-    SF_LOG_DEBUG("lfg", "SMSG_LFG_PARTY_INFO %s", GetPlayerInfo().c_str());
-    WorldPacket data(SMSG_LFG_PARTY_INFO, 1 + size);
+    SF_LOG_DEBUG("lfg", "SMSG_LFD_PARTY_INFO %s", GetPlayerInfo().c_str());
+    WorldPacket data(SMSG_LFD_PARTY_INFO, 1 + size);
     BuildPartyLockDungeonBlock(data, lockMap);
     SendPacket(&data);
 }
@@ -849,19 +859,19 @@ void WorldSession::SendLfgDisabled()
 
 void WorldSession::SendLfgOfferContinue(uint32 dungeonEntry)
 {
-    SF_LOG_DEBUG("lfg", "SMSG_LFG_OFFER_CONTINUE %s dungeon entry: %u",
+    SF_LOG_DEBUG("lfg", "SMSG_LFD_OFFER_CONTINUE %s dungeon entry: %u",
         GetPlayerInfo().c_str(), dungeonEntry);
-    WorldPacket data(SMSG_LFG_OFFER_CONTINUE, 4);
+    WorldPacket data(SMSG_LFD_OFFER_CONTINUE, 4);
     data << uint32(dungeonEntry);
     SendPacket(&data);
 }
 
 void WorldSession::SendLfgTeleportError(uint8 err)
 {
-    SF_LOG_DEBUG("lfg", "SMSG_LFG_TELEPORT_DENIED %s reason: %u",
+    SF_LOG_DEBUG("lfg", "SMSG_LFD_TELEPORT_DENIED %s reason: %u",
         GetPlayerInfo().c_str(), err);
-    WorldPacket data(SMSG_LFG_TELEPORT_DENIED, 4);
-    data << uint32(err);                                   // Error
+    WorldPacket data(SMSG_LFD_TELEPORT_DENIED, 4);
+    data.WriteBits(err, 4);                                   // Error
     SendPacket(&data);
 }
 

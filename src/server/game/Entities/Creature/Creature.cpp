@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011-2017 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2017 MaNGOS <https://www.getmangos.eu/>
+ * Copyright (C) 2011-2018 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2018 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2018 MaNGOS <https://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -267,28 +267,29 @@ bool Creature::InitEntry(uint32 entry, uint32 /*team*/, const CreatureData* data
         return false;
     }
 
-    // get difficulty 1 mode entry
-    CreatureTemplate const* cinfo = normalInfo;
-    for (uint8 diff = uint8(GetMap()->GetSpawnMode()); diff > 0;)
+    CreatureTemplate const* cinfo = nullptr;
+    DifficultyEntry const* difficultyEntry = sDifficultyStore.LookupEntry(GetMap()->GetSpawnMode());
+    while (!cinfo && difficultyEntry)
     {
-        // we already have valid Map pointer for current creature!
-        if (normalInfo->DifficultyEntry[diff - 1])
-        {
-            cinfo = sObjectMgr->GetCreatureTemplate(normalInfo->DifficultyEntry[diff - 1]);
-            if (cinfo)
-                break;                                      // template found
+        int32 idx = CreatureTemplate::DiffToDiffIndex(difficultyEntry->DiffID);
+        if (idx == -1)
+            break;
 
-            // check and reported at startup, so just ignore (restore normalInfo)
-            cinfo = normalInfo;
+        if (normalInfo->DifficultyEntry[idx])
+        {
+            cinfo = sObjectMgr->GetCreatureTemplate(normalInfo->DifficultyEntry[idx]);
+            break;
         }
 
-        // for instances heroic to normal, other cases attempt to retrieve previous difficulty
-        if (diff >= RAID_DIFFICULTY_10MAN_HEROIC && GetMap()->IsRaid())
-            diff -= 2;                                      // to normal raid difficulty cases
-        else
-            --diff;
+        if (!difficultyEntry->DownscaleID)
+            break;
+
+        difficultyEntry = sDifficultyStore.LookupEntry(difficultyEntry->DownscaleID);
     }
 
+    if (!cinfo)
+        cinfo = normalInfo;
+    
     // Initialize loot duplicate count depending on raid difficulty
     if (GetMap()->Is25ManRaid())
         loot.maxDuplicates = 3;
@@ -737,11 +738,17 @@ void Creature::Motion_Initialize()
         i_motionMaster.Initialize();
 }
 
-bool Creature::Create(uint32 guidlow, Map* map, uint32 phaseMask, uint32 Entry, uint32 vehId, uint32 team, float x, float y, float z, float ang, const CreatureData* data)
+bool Creature::Create(uint32 guidlow, Map* map, uint32 Entry, uint32 vehId, uint32 team, float x, float y, float z, float ang, const CreatureData* data)
 {
     ASSERT(map);
     SetMap(map);
-    SetPhaseMask(phaseMask, false);
+
+    if(data && data->phaseid)
+        SetPhased(data->phaseid, false, true);
+
+    if (data && data->phaseGroup)
+        for (auto ph : GetPhasesForGroup(data->phaseGroup))
+            SetPhased(ph, false, true);
 
     CreatureTemplate const* cinfo = sObjectMgr->GetCreatureTemplate(Entry);
     if (!cinfo)
@@ -934,10 +941,10 @@ void Creature::SaveToDB()
     }
 
     uint32 mapId = GetTransport() ? GetTransport()->GetGOInfo()->moTransport.mapID : GetMapId();
-    SaveToDB(mapId, data->spawnMask, GetPhaseMask());
+    SaveToDB(mapId, data->spawnMask);
 }
 
-void Creature::SaveToDB(uint32 mapid, uint8 spawnMask, uint32 phaseMask)
+void Creature::SaveToDB(uint32 mapid, uint32 spawnMask)
 {
     // update in loaded data
     if (!m_DBTableGuid)
@@ -970,7 +977,6 @@ void Creature::SaveToDB(uint32 mapid, uint8 spawnMask, uint32 phaseMask)
     // data->guid = guid must not be updated at save
     data.id = GetEntry();
     data.mapid = mapid;
-    data.phaseMask = phaseMask;
     data.displayid = displayId;
     data.equipmentId = GetCurrentEquipmentId();
     if (!GetTransport())
@@ -1015,8 +1021,7 @@ void Creature::SaveToDB(uint32 mapid, uint8 spawnMask, uint32 phaseMask)
     stmt->setUInt32(index++, m_DBTableGuid);
     stmt->setUInt32(index++, GetEntry());
     stmt->setUInt16(index++, uint16(mapid));
-    stmt->setUInt8(index++, spawnMask);
-    stmt->setUInt32(index++, GetPhaseMask());
+    stmt->setUInt32(index++, spawnMask);
     stmt->setUInt32(index++, displayId);
     stmt->setInt32(index++, int32(GetCurrentEquipmentId()));
     stmt->setFloat(index++, GetPositionX());
@@ -1213,7 +1218,7 @@ bool Creature::LoadCreatureFromDB(uint32 guid, Map* map, bool addToMap)
         guid = sObjectMgr->GenerateLowGuid(HIGHGUID_UNIT);
 
     uint16 team = 0;
-    if (!Create(guid, map, data->phaseMask, data->id, 0, team, data->posX, data->posY, data->posZ, data->orientation, data))
+    if (!Create(guid, map, data->id, 0, team, data->posX, data->posY, data->posZ, data->orientation, data))
         return false;
 
     //We should set first home position, because then AI calls home movement
@@ -1492,8 +1497,8 @@ void Creature::setDeathState(DeathState s)
         SetMeleeDamageSchool(SpellSchools(cinfo->dmgschool));
         LoadCreaturesAddon(true);
         Motion_Initialize();
-        if (GetCreatureData() && GetPhaseMask() != GetCreatureData()->phaseMask)
-            SetPhaseMask(GetCreatureData()->phaseMask, false);
+        //if (GetCreatureData() && GetPhaseMask() != GetCreatureData()->phaseMask)
+        //    SetPhaseMask(GetCreatureData()->phaseMask, false);
         Unit::setDeathState(ALIVE);
     }
 }
@@ -1988,7 +1993,7 @@ bool Creature::CanCreatureAttack(Unit const* victim, bool /*force*/) const
     if (IsAIEnabled && !AI()->CanAIAttack(victim))
         return false;
 
-    if (sMapStore.LookupEntry(GetMapId())->IsDungeon())
+    if (sMapStore.LookupEntry(GetMapId())->IsInstance())
         return true;
 
     //Use AttackDistance in distance check if threat radius is lower. This prevents creature bounce in and out of combat every update tick.
@@ -2114,7 +2119,7 @@ void Creature::SetInCombatWithZone()
 
     Map* map = GetMap();
 
-    if (!map->IsDungeon())
+    if (!map->IsInstance())
     {
         SF_LOG_ERROR("entities.unit", "Creature entry %u call SetInCombatWithZone for map (id: %u) that isn't an instance.", GetEntry(), map->GetId());
         return;
